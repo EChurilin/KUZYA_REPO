@@ -1,78 +1,112 @@
-from dataclasses import dataclass
+import uuid
+from dataclasses import dataclass, field
 from datetime import datetime
-from uuid import UUID
-
+from typing import Optional, List
 
 @dataclass
 class User:
     id: int
-    username: str | None
-    first_name: str
-    language_code: str
+    username: Optional[str]
+    first_name: Optional[str]
+    language_code: Optional[str]
     role: str
     created_at: datetime
     updated_at: datetime
 
-
 @dataclass
-class Campaign:
-    id: UUID
+class Game:
+    id: uuid.UUID
     name: str
-    description: str
-    reward_type: str
-    reward_amount: int
-    starts_at: datetime
-    ends_at: datetime
-    max_rewards_per_user: int
     is_active: bool
     created_at: datetime
+    updated_at: datetime
 
+@dataclass
+class Instruction:
+    id: uuid.UUID
+    text: str
+    image_paths: Optional[List[str]]
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
 
 @dataclass
 class Application:
-    id: UUID
+    id: uuid.UUID
     user_id: int
-    campaign_id: UUID
     status: str
-    screenshot_file_id: str | None
-    moderator_comment: str | None
+    declared_screenshot_count: int
+    actual_screenshot_count: int
+    moderator_comment: Optional[str]
     submitted_at: datetime
-    reviewed_at: datetime | None
-    rewarded_at: datetime | None
-    reviewed_by: int | None
+    reviewed_at: Optional[datetime]
+    rewarded_at: Optional[datetime]
+    reviewed_by: Optional[int]
+    games: List["Game"] = field(default_factory=list)
+    screenshots: List["ApplicationScreenshot"] = field(default_factory=list)
 
+@dataclass
+class ApplicationScreenshot:
+    id: uuid.UUID
+    application_id: uuid.UUID
+    client_file_id: str
+    storage_path: str
+    created_at: datetime
 
 @dataclass
 class Reward:
-    id: UUID
+    id: uuid.UUID
     user_id: int
-    campaign_id: UUID
-    application_id: UUID
+    application_id: uuid.UUID
     reward_type: str
     amount: int
-    transaction_id: str | None
+    transaction_id: Optional[str]
     status: str
-    issued_at: datetime | None
-    delivered_at: datetime | None
+    issued_at: Optional[datetime]
+    delivered_at: Optional[datetime]
 
+@dataclass
+class BalanceSnapshot:
+    id: uuid.UUID
+    reward_type: str
+    balance: int
+    fetched_at: datetime
 
 @dataclass
 class SupportTicket:
-    id: UUID
+    id: uuid.UUID
     user_id: int
     status: str
     priority: str
-    assigned_to: int | None
+    assigned_to: Optional[int]
     created_at: datetime
-    closed_at: datetime | None
-
+    closed_at: Optional[datetime]
 
 @dataclass
 class SupportMessage:
-    id: UUID
-    ticket_id: UUID
+    id: uuid.UUID
+    ticket_id: uuid.UUID
     sender_id: int
     sender_type: str
-    text: str | None
-    file_id: str | None
+    text: Optional[str]
+    file_id: Optional[str]
     created_at: datetime
+
+@dataclass
+class AuditLog:
+    id: uuid.UUID
+    entity_type: str
+    entity_id: str
+    actor_id: int
+    action: str
+    old_values: Optional[dict]
+    new_values: Optional[dict]
+    created_at: datetime
+
+@dataclass
+class RateLimit:
+    id: uuid.UUID
+    user_id: int
+    action_type: str
+    counter: int
+    window_start: datetime
