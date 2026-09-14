@@ -1,33 +1,23 @@
-class BaseBotException(Exception):
-    """Базовое исключение для всех ошибок бота."""
+class SessionAlreadyActiveError(Exception):
+    """У пользователя уже есть активная сессия."""
     pass
 
-
-class UserNotFoundError(BaseBotException):
-    """Пользователь не найден в базе данных."""
+class SessionNotFoundError(Exception):
+    """Сессия не найдена или не активна."""
     pass
 
-
-class ApplicationNotFoundError(BaseBotException):
-    """Заявка не найдена в базе данных."""
+class ScreenshotIntervalTooShortError(Exception):
+    """Интервал между скриншотами менее 10 минут."""
     pass
 
-
-class IdempotencyError(BaseBotException):
-    """Ошибка идемпотентности: операция уже была выполнена."""
+class ScreenshotLimitReachedError(Exception):
+    """Достигнут лимит скриншотов в сессии (150)."""
     pass
 
-
-class InsufficientBalanceError(BaseBotException):
-    """Недостаточно средств на балансе для выдачи награды."""
+class ApplicationLimitReachedError(Exception):
+    """Достигнут лимит заявок в день (500)."""
     pass
 
-
-class RateLimitExceededError(BaseBotException):
-    """Превышен лимит запросов (rate limit)."""
-    pass
-
-
-class InvalidScreenshotError(BaseBotException):
-    """Скриншот не прошел валидацию или имеет недопустимый формат."""
+class RewardBalanceInsufficientError(Exception):
+    """Недостаточно средств на балансе бота для выдачи награды."""
     pass
