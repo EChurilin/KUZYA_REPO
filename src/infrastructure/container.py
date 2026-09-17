@@ -12,6 +12,8 @@ from src.repositories.screenshot_repo import ScreenshotRepositoryImpl
 from src.repositories.balance_repo import BalanceRepositoryImpl
 from src.repositories.application_repo import ApplicationRepositoryImpl
 from src.repositories.reward_repo import RewardRepositoryImpl
+from src.repositories.user_repo import UserRepositoryImpl
+from src.repositories.report_repo import ReportRepositoryImpl
 
 from src.services.game_service import GameService
 from src.services.instruction_service import InstructionService
@@ -20,6 +22,8 @@ from src.services.session_service import SessionService
 from src.services.application_service import ApplicationService
 from src.services.review_service import ReviewService
 from src.services.cleanup_service import CleanupService
+from src.services.user_service import UserService
+from src.services.report_service import ReportService
 
 
 @dataclass
@@ -35,6 +39,8 @@ class Container:
     application_service: ApplicationService
     review_service: ReviewService
     cleanup_service: CleanupService
+    user_service: UserService
+    report_service: ReportService
 
 
 def build_container() -> Container:
@@ -49,6 +55,8 @@ def build_container() -> Container:
     balance_repo = BalanceRepositoryImpl(pool)
     app_repo = ApplicationRepositoryImpl(pool)
     reward_repo = RewardRepositoryImpl(pool)
+    user_repo = UserRepositoryImpl(pool)
+    report_repo = ReportRepositoryImpl(pool)
 
     # Инфраструктура
     storage = LocalScreenshotStorage(settings.storage.base_path)
@@ -63,7 +71,11 @@ def build_container() -> Container:
     review_service = ReviewService(
         app_repo, screenshot_repo, reward_repo, balance_service, reward_issuer
     )
-    cleanup_service = CleanupService(session_repo, screenshot_repo, app_repo, storage)
+    cleanup_service = CleanupService(
+        session_repo, screenshot_repo, app_repo, storage, game_repo, instruction_repo
+    )
+    user_service = UserService(user_repo)
+    report_service = ReportService(report_repo)
 
     return Container(
         game_service=game_service,
@@ -73,4 +85,6 @@ def build_container() -> Container:
         application_service=application_service,
         review_service=review_service,
         cleanup_service=cleanup_service,
+        user_service=user_service,
+        report_service=report_service,
     )

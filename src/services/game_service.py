@@ -1,6 +1,7 @@
-from typing import List
-from src.core.entities import Game, InstructionBlock
-from src.core.interfaces import GameRepository, InstructionBlockRepository
+from typing import List, Optional
+import uuid
+from src.core.entities import Game
+from src.core.interfaces import GameRepository
 
 
 class GameService:
@@ -11,11 +12,24 @@ class GameService:
         """Возвращает список всех активных игр для выбора пользователем."""
         return await self._game_repo.get_all_active()
 
+    async def get_game_by_id(self, game_id: uuid.UUID) -> Optional[Game]:
+        """Возвращает игру по её идентификатору."""
+        return await self._game_repo.get_by_id(game_id)
 
-class InstructionService:
-    def __init__(self, instruction_repo: InstructionBlockRepository):
-        self._instruction_repo = instruction_repo
+    async def add_game(self, game: Game) -> None:
+        """Добавляет одну новую игру к текущему активному списку."""
+        await self._game_repo.create(game)
 
-    async def get_active_blocks(self) -> List[InstructionBlock]:
-        """Возвращает все активные блоки инструкции, отсортированные по порядку."""
-        return await self._instruction_repo.get_all_active_ordered()
+    async def replace_game_list(self, new_games: List[Game]) -> None:
+        """Полная замена списка игр: деактивирует все текущие активные игры и создаёт новые."""
+        await self._game_repo.deactivate_all()
+        for game in new_games:
+            await self._game_repo.create(game)
+
+    async def get_old_deactivated_games(self, hours: int = 36) -> List[Game]:
+        """Возвращает деактивированные игры старше N часов для последующей очистки."""
+        return await self._game_repo.get_old_deactivated_games(hours)
+
+    async def delete_game(self, game_id: uuid.UUID) -> None:
+        """Удаляет игру по её идентификатору."""
+        await self._game_repo.delete(game_id)

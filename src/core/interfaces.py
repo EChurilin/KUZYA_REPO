@@ -3,7 +3,7 @@ from datetime import datetime
 import uuid
 from src.core.entities import (
     Game, InstructionBlock, Session, ApplicationScreenshot,
-    BalanceSnapshot, Application, Reward,
+    BalanceSnapshot, Application, Reward, User,
 )
 
 
@@ -21,6 +21,14 @@ class GameRepository(Protocol):
         ...
 
     async def delete(self, game_id: uuid.UUID) -> None:
+        ...
+
+    async def deactivate_all(self) -> None:
+        """Деактивирует все активные игры, проставляя deactivated_at."""
+        ...
+
+    async def get_old_deactivated_games(self, hours: int) -> List[Game]:
+        """Возвращает деактивированные игры старше N часов для очистки."""
         ...
 
 
@@ -41,6 +49,34 @@ class InstructionBlockRepository(Protocol):
         ...
 
     async def delete(self, block_id: uuid.UUID) -> None:
+        ...
+
+    async def get_max_version(self) -> int:
+        """Возвращает максимальную версию инструкции."""
+        ...
+
+    async def create_draft_block(self, block: InstructionBlock) -> None:
+        """Создаёт блок черновика (is_published = False)."""
+        ...
+
+    async def publish_version(self, version: int) -> None:
+        """Публикует все блоки указанной версии (is_published = True)."""
+        ...
+
+    async def get_blocks_by_version(self, version: int) -> List[InstructionBlock]:
+        """Возвращает все блоки указанной версии, отсортированные по order."""
+        ...
+
+    async def get_current_published_version(self) -> Optional[int]:
+        """Возвращает максимальную опубликованную версию."""
+        ...
+
+    async def delete_blocks_by_version(self, version: int) -> None:
+        """Удаляет все блоки указанной версии (для очистки черновиков)."""
+        ...
+
+    async def get_old_published_blocks(self, hours: int) -> List[InstructionBlock]:
+        """Возвращает опубликованные блоки, не являющиеся текущей версией, старше N часов."""
         ...
 
 
@@ -141,4 +177,33 @@ class RewardRepository(Protocol):
     async def update_status(
         self, reward_id: uuid.UUID, status: str, transaction_id: Optional[str]
     ) -> None:
+        ...
+
+
+class UserRepository(Protocol):
+    async def get_by_id(self, user_id: int) -> Optional[User]:
+        ...
+
+    async def create(self, user: User) -> None:
+        ...
+
+    async def update(self, user: User) -> None:
+        ...
+
+
+class ReportRepository(Protocol):
+    async def get_unique_users_count(self, since: Optional[datetime]) -> int:
+        """Количество уникальных пользователей, открывших хотя бы одну сессию за период."""
+        ...
+
+    async def get_screenshots_stats(self, since: Optional[datetime]) -> tuple[int, int]:
+        """Возвращает (прислано_скриншотов, одобрено_скриншотов) за период."""
+        ...
+
+    async def get_top_users_by_screenshots(self, since: Optional[datetime], limit: int = 30) -> List[dict]:
+        """Топ пользователей по количеству присланных скриншотов за период."""
+        ...
+
+    async def get_stats_by_game(self, since: Optional[datetime]) -> List[dict]:
+        """Статистика по играм за период."""
         ...

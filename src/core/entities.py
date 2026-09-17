@@ -22,6 +22,9 @@ class Game:
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    link: Optional[str] = None
+    photo_path: Optional[str] = None
+    deactivated_at: Optional[datetime] = None
 
 
 @dataclass
@@ -34,6 +37,8 @@ class InstructionBlock:
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    version: int = 1
+    is_published: bool = False
 
 
 @dataclass

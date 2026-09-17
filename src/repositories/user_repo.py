@@ -1,79 +1,40 @@
-from typing import Any
-
+from typing import Optional
+import asyncpg
 from src.core.entities import User
-from src.config.constants import DatabaseTables
 from src.repositories.base import BaseRepository
 
 
-class UserRepository(BaseRepository):
-    """Репозиторий для работы с таблицей пользователей."""
+class UserRepositoryImpl(BaseRepository):
+    async def get_by_id(self, user_id: int) -> Optional[User]:
+        row = await self.fetchone(
+            "SELECT id, username, first_name, language_code, role, created_at, updated_at "
+            "FROM users WHERE id = $1",
+            user_id
+        )
+        return self._row_to_user(row) if row else None
 
-    async def get_by_id(self, user_id: int) -> User | None:
-        """Возвращает пользователя по Telegram ID или None."""
-        query = f"""
-            SELECT id, username, first_name, language_code, role, created_at, updated_at
-            FROM {DatabaseTables.USERS}
-            WHERE id = $1
-        """
-        row = await self.fetch_one(query, user_id)
-        if not row:
-            return None
-        return self._map_row_to_entity(row)
-
-    async def create(self, user: User) -> User:
-        """Создает нового пользователя в базе данных."""
-        query = f"""
-            INSERT INTO {DatabaseTables.USERS} 
-            (id, username, first_name, language_code, role, created_at, updated_at)
+    async def create(self, user: User) -> None:
+        await self.execute(
+            """
+            INSERT INTO users (id, username, first_name, language_code, role, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING id, username, first_name, language_code, role, created_at, updated_at
-        """
-        row = await self.fetch_one(
-            query,
-            user.id,
-            user.username,
-            user.first_name,
-            user.language_code,
-            user.role,
-            user.created_at,
-            user.updated_at,
+            """,
+            user.id, user.username, user.first_name, user.language_code,
+            user.role, user.created_at, user.updated_at
         )
-        return self._map_row_to_entity(row)
 
-    async def update(self, user: User) -> User:
-        """Обновляет данные существующего пользователя (например, имя или username)."""
-        query = f"""
-            UPDATE {DatabaseTables.USERS}
-            SET username = $2, first_name = $3, language_code = $4, 
-                role = $5, updated_at = $6
-            WHERE id = $1
-            RETURNING id, username, first_name, language_code, role, created_at, updated_at
-        """
-        row = await self.fetch_one(
-            query,
-            user.id,
-            user.username,
-            user.first_name,
-            user.language_code,
-            user.role,
-            user.updated_at,
+    async def update(self, user: User) -> None:
+        await self.execute(
+            """
+            UPDATE users
+            SET username = $1, first_name = $2, language_code = $3, role = $4, updated_at = $5
+            WHERE id = $6
+            """,
+            user.username, user.first_name, user.language_code,
+            user.role, user.updated_at, user.id
         )
-        return self._map_row_to_entity(row)
 
-    async def get_all(self, limit: int = 100, offset: int = 0) -> list[User]:
-        """Возвращает список пользователей с пагинацией (для админ-панели)."""
-        query = f"""
-            SELECT id, username, first_name, language_code, role, created_at, updated_at
-            FROM {DatabaseTables.USERS}
-            ORDER BY created_at DESC
-            LIMIT $1 OFFSET $2
-        """
-        rows = await self.fetch_all(query, limit, offset)
-        return [self._map_row_to_entity(row) for row in rows]
-
-    @staticmethod
-    def _map_row_to_entity(row: dict[str, Any]) -> User:
-        """Преобразует словарь из БД в доменную сущность User."""
+    def _row_to_user(self, row: asyncpg.Record) -> User:
         return User(
             id=row["id"],
             username=row["username"],
