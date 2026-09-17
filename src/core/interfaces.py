@@ -1,9 +1,11 @@
 from typing import Protocol, List, Optional
 from datetime import datetime
 import uuid
+
 from src.core.entities import (
     Game, InstructionBlock, Session, ApplicationScreenshot,
     BalanceSnapshot, Application, Reward, User,
+    UserBalanceTransaction, GiftClaim, StarTopup,
 )
 
 
@@ -190,6 +192,18 @@ class UserRepository(Protocol):
     async def update(self, user: User) -> None:
         ...
 
+    async def update_star_balance(self, user_id: int, new_balance: int) -> None:
+        """Обновляет внутренний баланс звёзд пользователя."""
+        ...
+
+    async def set_instruction_passed(self, user_id: int, passed: bool) -> None:
+        """Устанавливает флаг прохождения инструкции."""
+        ...
+
+    async def set_last_instruction_message_id(self, user_id: int, message_id: Optional[int]) -> None:
+        """Сохраняет message_id последнего блока инструкции."""
+        ...
+
 
 class ReportRepository(Protocol):
     async def get_unique_users_count(self, since: Optional[datetime]) -> int:
@@ -206,4 +220,75 @@ class ReportRepository(Protocol):
 
     async def get_stats_by_game(self, since: Optional[datetime]) -> List[dict]:
         """Статистика по играм за период."""
+        ...
+
+
+# --- Новые интерфейсы v4.0 ---
+
+
+class SettingsRepository(Protocol):
+    async def get(self, key: str) -> Optional[str]:
+        """Возвращает значение настройки по ключу или None."""
+        ...
+
+    async def set(self, key: str, value: str) -> None:
+        """Создаёт или обновляет настройку по ключу."""
+        ...
+
+
+class UserBalanceRepository(Protocol):
+    async def get_balance(self, user_id: int) -> int:
+        """Возвращает текущий внутренний баланс пользователя."""
+        ...
+
+    async def credit(
+        self, user_id: int, amount: int, reason: str, reference_id: Optional[uuid.UUID]
+    ) -> int:
+        """Начисляет сумму на внутренний баланс. Возвращает новый баланс."""
+        ...
+
+    async def debit(
+        self, user_id: int, amount: int, reason: str, reference_id: Optional[uuid.UUID]
+    ) -> int:
+        """Списывает сумму с внутреннего баланса. Возвращает новый баланс."""
+        ...
+
+    async def get_transactions(self, user_id: int, limit: int = 50) -> List[UserBalanceTransaction]:
+        """Возвращает последние операции по балансу пользователя."""
+        ...
+
+
+class GiftClaimRepository(Protocol):
+    async def create(self, claim: GiftClaim) -> None:
+        ...
+
+    async def get_by_id(self, claim_id: uuid.UUID) -> Optional[GiftClaim]:
+        ...
+
+    async def update_status(
+        self, claim_id: uuid.UUID, status: str, telegram_charge_id: Optional[str]
+    ) -> None:
+        ...
+
+    async def get_by_user(self, user_id: int, limit: int = 20) -> List[GiftClaim]:
+        ...
+
+
+class TopupRepository(Protocol):
+    async def create(self, topup: StarTopup) -> None:
+        ...
+
+    async def get_by_id(self, topup_id: uuid.UUID) -> Optional[StarTopup]:
+        ...
+
+    async def get_by_payload(self, payload: str) -> Optional[StarTopup]:
+        ...
+
+    async def update_status(
+        self, topup_id: uuid.UUID, status: str, telegram_payment_charge_id: Optional[str]
+    ) -> None:
+        ...
+
+    async def delete_invoice_message_id(self, topup_id: uuid.UUID) -> None:
+        """Обнуляет invoice_message_id после удаления сообщения-инвойса."""
         ...

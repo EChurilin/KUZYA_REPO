@@ -13,6 +13,9 @@ class User:
     role: str
     created_at: datetime
     updated_at: datetime
+    star_balance: int = 0
+    instruction_passed: bool = False
+    last_instruction_message_id: Optional[int] = None
 
 
 @dataclass
@@ -153,3 +156,63 @@ class RateLimit:
     action_type: str
     counter: int
     window_start: datetime
+
+
+# --- Новые сущности v4.0 ---
+
+
+@dataclass
+class BotSetting:
+    key: str
+    value: str
+    updated_at: datetime
+
+
+@dataclass
+class UserBalanceTransaction:
+    id: uuid.UUID
+    user_id: int
+    amount: int
+    balance_after: int
+    reason: str
+    reference_id: Optional[uuid.UUID]
+    created_at: datetime
+
+
+@dataclass
+class GiftClaim:
+    id: uuid.UUID
+    user_id: int
+    gift_id: str
+    gift_name: Optional[str]
+    star_count: int
+    status: str
+    telegram_charge_id: Optional[str]
+    created_at: datetime
+    sent_at: Optional[datetime]
+
+
+@dataclass
+class StarTopup:
+    id: uuid.UUID
+    admin_id: int
+    amount: int
+    status: str
+    invoice_payload: str
+    invoice_message_id: Optional[int]
+    telegram_payment_charge_id: Optional[str]
+    created_at: datetime
+    paid_at: Optional[datetime]
+
+
+@dataclass
+class Gift:
+    id: str
+    star_count: int
+    sticker: Optional[dict] = None
+    upgrade_star_count: Optional[int] = None
+    is_premium: Optional[bool] = None
+    total_count: Optional[int] = None
+    remaining_count: Optional[int] = None
+    personal_total_count: Optional[int] = None
+    personal_remaining_count: Optional[int] = None
