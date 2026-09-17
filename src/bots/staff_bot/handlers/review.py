@@ -16,14 +16,14 @@ async def cb_approve_scr(callback: CallbackQuery, container: Container):
     if not is_admin(callback.from_user.id):
         await callback.answer("Доступ запрещен", show_alert=True)
         return
-    
+
     scr_id_str = callback.data.split(":")[1]
     try:
         scr_id = uuid.UUID(scr_id_str)
     except ValueError:
         await callback.answer("Ошибка ID", show_alert=True)
         return
-        
+
     await container.review_service.approve_screenshot(scr_id, callback.from_user.id)
     await callback.answer("✅ Скриншот одобрен")
 
@@ -32,14 +32,14 @@ async def cb_reject_scr(callback: CallbackQuery, container: Container):
     if not is_admin(callback.from_user.id):
         await callback.answer("Доступ запрещен", show_alert=True)
         return
-    
+
     scr_id_str = callback.data.split(":")[1]
     try:
         scr_id = uuid.UUID(scr_id_str)
     except ValueError:
         await callback.answer("Ошибка ID", show_alert=True)
         return
-        
+
     await container.review_service.reject_screenshot(scr_id, callback.from_user.id)
     await callback.answer("❌ Скриншот отклонен")
 
@@ -48,7 +48,7 @@ async def cb_finalize_app(callback: CallbackQuery, container: Container):
     if not is_admin(callback.from_user.id):
         await callback.answer("Доступ запрещен", show_alert=True)
         return
-    
+
     app_id_str = callback.data.split(":")[1]
     try:
         app_id = uuid.UUID(app_id_str)
@@ -64,9 +64,9 @@ async def cb_finalize_app(callback: CallbackQuery, container: Container):
     if app.status == APPLICATION_STATUS_REWARDED:
         await callback.answer("Награда уже выдана по этой заявке", show_alert=True)
         return
-    
+
     await callback.answer("⏳ Обработка заявки...")
-        
+
     try:
         reward = await container.review_service.finalize_application(
             application_id=app_id,
@@ -75,7 +75,7 @@ async def cb_finalize_app(callback: CallbackQuery, container: Container):
             reward_amount_per_screenshot=DEFAULT_REWARD_AMOUNT_PER_SCREENSHOT,
             comment="Проверено администратором"
         )
-        
+
         if reward:
             await callback.message.edit_text(
                 f"✅ Заявка #{str(app_id)[:8]} успешно обработана!\n"
@@ -87,7 +87,7 @@ async def cb_finalize_app(callback: CallbackQuery, container: Container):
             await callback.message.edit_text(
                 f"❌ Заявка #{str(app_id)[:8]} отклонена (нет одобренных скриншотов)."
             )
-            
+
     except Exception as e:
         await callback.answer(f"❌ Ошибка: {str(e)}", show_alert=True)
 
@@ -96,13 +96,13 @@ async def cb_queue_back(callback: CallbackQuery, container: Container):
     if not is_admin(callback.from_user.id):
         await callback.answer("Доступ запрещен", show_alert=True)
         return
-        
+
     await callback.answer()
     applications = await container.application_service._app_repo.get_pending_review(limit=10)
     if not applications:
         await callback.message.edit_text("📭 Очередь пуста.")
         return
-        
+
     text = "📋 В очереди на проверку:\n\nВыберите заявку для модерации:"
     keyboard = []
     for app in applications:
@@ -112,7 +112,7 @@ async def cb_queue_back(callback: CallbackQuery, container: Container):
         keyboard.append([
             InlineKeyboardButton(text=btn_text, callback_data=f"review_app:{app.id}")
         ])
-    
+
     kb = InlineKeyboardMarkup(inline_keyboard=keyboard)
     try:
         await callback.message.edit_text(text, reply_markup=kb)

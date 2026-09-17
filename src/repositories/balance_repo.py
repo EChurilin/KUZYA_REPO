@@ -11,7 +11,7 @@ class BalanceRepositoryImpl(BaseRepository):
         await self.execute(
             """
             INSERT INTO balance_snapshots (id, reward_type, balance, fetched_at)
-            VALUES (, , , )
+            VALUES ($1, $2, $3, $4)
             """,
             snapshot.id,
             snapshot.reward_type,
@@ -24,7 +24,7 @@ class BalanceRepositoryImpl(BaseRepository):
             """
             SELECT id, reward_type, balance, fetched_at
             FROM balance_snapshots
-            WHERE reward_type = 
+            WHERE reward_type = $1
             ORDER BY fetched_at DESC
             LIMIT 1
             """,

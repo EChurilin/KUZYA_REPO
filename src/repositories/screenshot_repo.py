@@ -12,7 +12,7 @@ class ScreenshotRepositoryImpl(BaseRepository):
             """
             INSERT INTO application_screenshots
                 (id, session_id, application_id, client_file_id, storage_path, status, created_at)
-            VALUES (, , , , , , )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             """,
             screenshot.id,
             screenshot.session_id,
@@ -28,7 +28,7 @@ class ScreenshotRepositoryImpl(BaseRepository):
             """
             SELECT id, session_id, application_id, client_file_id, storage_path, status, created_at
             FROM application_screenshots
-            WHERE session_id = 
+            WHERE session_id = $1
             ORDER BY created_at ASC
             """,
             session_id,
@@ -40,7 +40,7 @@ class ScreenshotRepositoryImpl(BaseRepository):
             """
             SELECT id, session_id, application_id, client_file_id, storage_path, status, created_at
             FROM application_screenshots
-            WHERE application_id = 
+            WHERE application_id = $1
             ORDER BY created_at ASC
             """,
             application_id,
@@ -52,7 +52,7 @@ class ScreenshotRepositoryImpl(BaseRepository):
             """
             SELECT id, session_id, application_id, client_file_id, storage_path, status, created_at
             FROM application_screenshots
-            WHERE id = 
+            WHERE id = $1
             """,
             screenshot_id,
         )
@@ -60,9 +60,9 @@ class ScreenshotRepositoryImpl(BaseRepository):
 
     async def update_status(self, screenshot_id: uuid.UUID, status: str) -> None:
         await self.execute(
-            "UPDATE application_screenshots SET status =  WHERE id = ",
-            screenshot_id,
+            "UPDATE application_screenshots SET status = $1 WHERE id = $2",
             status,
+            screenshot_id,
         )
 
     async def link_to_application(
@@ -71,11 +71,11 @@ class ScreenshotRepositoryImpl(BaseRepository):
         await self.execute(
             """
             UPDATE application_screenshots
-            SET application_id = 
-            WHERE session_id = 
+            SET application_id = $1
+            WHERE session_id = $2
             """,
-            session_id,
             application_id,
+            session_id,
         )
 
     async def get_old_screenshots_for_cleanup(
@@ -88,7 +88,7 @@ class ScreenshotRepositoryImpl(BaseRepository):
             FROM application_screenshots s
             JOIN sessions sess ON s.session_id = sess.id
             WHERE sess.status IN ('completed', 'expired', 'cancelled')
-              AND s.created_at < NOW() - ( || ' days')::INTERVAL
+              AND s.created_at < NOW() - ($1 || ' days')::INTERVAL
             """,
             str(retention_days),
         )
@@ -96,7 +96,7 @@ class ScreenshotRepositoryImpl(BaseRepository):
 
     async def delete(self, screenshot_id: uuid.UUID) -> None:
         await self.execute(
-            "DELETE FROM application_screenshots WHERE id = ",
+            "DELETE FROM application_screenshots WHERE id = $1",
             screenshot_id,
         )
 

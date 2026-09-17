@@ -8,7 +8,7 @@ from src.infrastructure.container import build_container
 from src.bots.staff_bot.middlewares.container_middleware import ContainerMiddleware
 
 # Импортируем роутеры
-from src.bots.staff_bot.handlers import queue
+from src.bots.staff_bot.handlers import queue, review
 
 async def main():
     logging.basicConfig(
@@ -16,27 +16,29 @@ async def main():
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     logger = logging.getLogger(__name__)
-    
+
     logger.info("Запуск staff_bot...")
-    
+
     await init_pool()
     logger.info("Пул БД инициализирован")
-    
+
     container = build_container()
     logger.info("Контейнер зависимостей создан")
-    
+
     bot = Bot(token=settings.staff_bot.token)
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)
-    
+
     dp.update.middleware(ContainerMiddleware(container))
     logger.info("Middleware зарегистрирован")
-    
+
+    # Регистрируем роутеры
     dp.include_router(queue.router)
+    dp.include_router(review.router)
     logger.info("Роутеры зарегистрированы")
-    
+
     logger.info("Staff_bot запущен и готов к работе")
-    
+
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:

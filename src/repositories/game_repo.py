@@ -15,7 +15,7 @@ class GameRepositoryImpl(BaseRepository):
 
     async def get_by_id(self, game_id: uuid.UUID) -> Optional[Game]:
         row = await self.fetchone(
-            "SELECT id, name, is_active, created_at, updated_at FROM games WHERE id = ",
+            "SELECT id, name, is_active, created_at, updated_at FROM games WHERE id = $1",
             game_id
         )
         return self._row_to_game(row) if row else None
@@ -24,7 +24,7 @@ class GameRepositoryImpl(BaseRepository):
         await self.execute(
             """
             INSERT INTO games (id, name, is_active, created_at, updated_at)
-            VALUES (, , , , )
+            VALUES ($1, $2, $3, $4, $5)
             """,
             game.id, game.name, game.is_active, game.created_at, game.updated_at
         )
@@ -33,14 +33,14 @@ class GameRepositoryImpl(BaseRepository):
         await self.execute(
             """
             UPDATE games
-            SET name = , is_active = , updated_at = 
-            WHERE id = 
+            SET name = $1, is_active = $2, updated_at = $3
+            WHERE id = $4
             """,
-            game.id, game.name, game.is_active, game.updated_at
+            game.name, game.is_active, game.updated_at, game.id
         )
 
     async def delete(self, game_id: uuid.UUID) -> None:
-        await self.execute("DELETE FROM games WHERE id = ", game_id)
+        await self.execute("DELETE FROM games WHERE id = $1", game_id)
 
     def _row_to_game(self, row: asyncpg.Record) -> Game:
         return Game(

@@ -23,7 +23,7 @@ class InstructionBlockRepositoryImpl(BaseRepository):
             """
             SELECT id, "order", text, media_type, media_path, is_active, created_at, updated_at
             FROM instruction_blocks
-            WHERE id = 
+            WHERE id = $1
             """,
             block_id
         )
@@ -37,7 +37,7 @@ class InstructionBlockRepositoryImpl(BaseRepository):
         await self.execute(
             """
             INSERT INTO instruction_blocks (id, "order", text, media_type, media_path, is_active, created_at, updated_at)
-            VALUES (, , , , , , , )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             """,
             block.id, block.order, block.text, block.media_type, block.media_path,
             block.is_active, block.created_at, block.updated_at
@@ -47,16 +47,16 @@ class InstructionBlockRepositoryImpl(BaseRepository):
         await self.execute(
             """
             UPDATE instruction_blocks
-            SET "order" = , text = , media_type = , media_path = ,
-                is_active = , updated_at = 
-            WHERE id = 
+            SET "order" = $1, text = $2, media_type = $3, media_path = $4,
+                is_active = $5, updated_at = $6
+            WHERE id = $7
             """,
-            block.id, block.order, block.text, block.media_type, block.media_path,
-            block.is_active, block.updated_at
+            block.order, block.text, block.media_type, block.media_path,
+            block.is_active, block.updated_at, block.id
         )
 
     async def delete(self, block_id: uuid.UUID) -> None:
-        await self.execute("DELETE FROM instruction_blocks WHERE id = ", block_id)
+        await self.execute("DELETE FROM instruction_blocks WHERE id = $1", block_id)
 
     def _row_to_block(self, row: asyncpg.Record) -> InstructionBlock:
         return InstructionBlock(

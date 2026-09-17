@@ -12,7 +12,7 @@ class SessionRepositoryImpl(BaseRepository):
             """
             INSERT INTO sessions (id, user_id, game_id, status, started_at,
                                   last_screenshot_at, screenshot_count, created_at)
-            VALUES (, , , , , , , )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             """,
             session.id,
             session.user_id,
@@ -30,7 +30,7 @@ class SessionRepositoryImpl(BaseRepository):
             SELECT id, user_id, game_id, status, started_at,
                    last_screenshot_at, screenshot_count, created_at
             FROM sessions
-            WHERE id = 
+            WHERE id = $1
             """,
             session_id,
         )
@@ -42,7 +42,7 @@ class SessionRepositoryImpl(BaseRepository):
             SELECT id, user_id, game_id, status, started_at,
                    last_screenshot_at, screenshot_count, created_at
             FROM sessions
-            WHERE user_id =  AND status = 'active'
+            WHERE user_id = $1 AND status = 'active'
             ORDER BY started_at DESC
             LIMIT 1
             """,
@@ -56,19 +56,19 @@ class SessionRepositoryImpl(BaseRepository):
         await self.execute(
             """
             UPDATE sessions
-            SET last_screenshot_at = ,
+            SET last_screenshot_at = $1,
                 screenshot_count = screenshot_count + 1
-            WHERE id = 
+            WHERE id = $2
             """,
-            session_id,
             timestamp,
+            session_id,
         )
 
     async def close_session(self, session_id: uuid.UUID, status: str) -> None:
         await self.execute(
-            "UPDATE sessions SET status =  WHERE id = ",
-            session_id,
+            "UPDATE sessions SET status = $1 WHERE id = $2",
             status,
+            session_id,
         )
 
     async def get_expired_active_sessions(
@@ -82,9 +82,9 @@ class SessionRepositoryImpl(BaseRepository):
             FROM sessions
             WHERE status = 'active'
               AND (
-                  (last_screenshot_at IS NOT NULL AND last_screenshot_at < )
+                  (last_screenshot_at IS NOT NULL AND last_screenshot_at < $1)
                   OR
-                  (last_screenshot_at IS NULL AND started_at < )
+                  (last_screenshot_at IS NULL AND started_at < $1)
               )
             """,
             cutoff,

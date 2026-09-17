@@ -48,6 +48,7 @@ class Settings:
     staff_bot: TelegramBotSettings
     storage: StorageSettings
     debug: bool = False
+    log_level: str = "INFO"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -78,6 +79,9 @@ class Settings:
         debug_value = os.getenv("DEBUG", "false").lower()
         debug = debug_value in ("true", "1", "yes", "on")
 
+        # Log level
+        log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+
         return cls(
             database=DatabaseSettings(
                 host=db_host,
@@ -105,6 +109,7 @@ class Settings:
                 max_file_size_mb=max_file_size,
             ),
             debug=debug,
+            log_level=log_level,
         )
 
 

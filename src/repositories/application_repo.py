@@ -15,7 +15,7 @@ class ApplicationRepositoryImpl(BaseRepository):
                 actual_screenshot_count, approved_screenshot_count,
                 moderator_comment, submitted_at, reviewed_at,
                 rewarded_at, reviewed_by, auto_closed
-            ) VALUES (, , , , , , , , , , , , )
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             """,
             application.id,
             application.user_id,
@@ -40,7 +40,7 @@ class ApplicationRepositoryImpl(BaseRepository):
                    moderator_comment, submitted_at, reviewed_at,
                    rewarded_at, reviewed_by, auto_closed
             FROM applications
-            WHERE id = 
+            WHERE id = $1
             """,
             application_id,
         )
@@ -56,7 +56,7 @@ class ApplicationRepositoryImpl(BaseRepository):
             FROM applications
             WHERE status = 'pending_review'
             ORDER BY submitted_at ASC
-            LIMIT 
+            LIMIT $1
             """,
             limit,
         )
@@ -73,18 +73,18 @@ class ApplicationRepositoryImpl(BaseRepository):
         await self.execute(
             """
             UPDATE applications
-            SET status = ,
-                reviewed_by = ,
-                moderator_comment = ,
-                approved_screenshot_count = ,
+            SET status = $1,
+                reviewed_by = $2,
+                moderator_comment = $3,
+                approved_screenshot_count = $4,
                 reviewed_at = NOW()
-            WHERE id = 
+            WHERE id = $5
             """,
-            application_id,
             status,
             reviewed_by,
             moderator_comment,
             approved_count,
+            application_id,
         )
 
     async def mark_rewarded(self, application_id: uuid.UUID) -> None:
@@ -92,7 +92,7 @@ class ApplicationRepositoryImpl(BaseRepository):
             """
             UPDATE applications
             SET status = 'rewarded', rewarded_at = NOW()
-            WHERE id = 
+            WHERE id = $1
             """,
             application_id,
         )
@@ -105,9 +105,9 @@ class ApplicationRepositoryImpl(BaseRepository):
                    moderator_comment, submitted_at, reviewed_at,
                    rewarded_at, reviewed_by, auto_closed
             FROM applications
-            WHERE user_id = 
+            WHERE user_id = $1
             ORDER BY submitted_at DESC
-            LIMIT 
+            LIMIT $2
             """,
             user_id,
             limit,
@@ -121,7 +121,7 @@ class ApplicationRepositoryImpl(BaseRepository):
         result = await self.fetchval(
             """
             SELECT COUNT(*) FROM applications
-            WHERE user_id =  AND submitted_at >= 
+            WHERE user_id = $1 AND submitted_at >= $2
             """,
             user_id,
             today_start,
