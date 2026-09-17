@@ -23,13 +23,40 @@ async def cmd_queue(message: Message, container: Container):
         await message.answer("Очередь пуста. Новых заявок на проверку пока нет.")
         return
 
-    text = "📋 В очереди на проверку:\n\nВыберите заявку для модерации:"
+    text = "В очереди на проверку:\n\nВыберите заявку для модерации:"
 
     keyboard = []
     for app in applications:
         btn_text = f"Заявка #{str(app.id)[:8]} ({app.actual_screenshot_count} скрин.)"
         if app.auto_closed:
-            btn_text += " 🤖"
+            btn_text += " [авто]"
+
+        keyboard.append([
+            InlineKeyboardButton(text=btn_text, callback_data=f"review_app:{app.id}")
+        ])
+
+    kb = InlineKeyboardMarkup(inline_keyboard=keyboard)
+    await message.answer(text, reply_markup=kb)
+
+@router.message(F.text == "Очередь заявок")
+async def menu_queue(message: Message, container: Container):
+    if not is_admin(message.from_user.id):
+        await message.answer("Доступ запрещён.")
+        return
+
+    applications = await container.application_service._app_repo.get_pending_review(limit=10)
+
+    if not applications:
+        await message.answer("Очередь пуста. Новых заявок на проверку пока нет.")
+        return
+
+    text = "В очереди на проверку:\n\nВыберите заявку для модерации:"
+
+    keyboard = []
+    for app in applications:
+        btn_text = f"Заявка #{str(app.id)[:8]} ({app.actual_screenshot_count} скрин.)"
+        if app.auto_closed:
+            btn_text += " [авто]"
 
         keyboard.append([
             InlineKeyboardButton(text=btn_text, callback_data=f"review_app:{app.id}")
@@ -64,22 +91,22 @@ async def cb_review_app(callback: CallbackQuery, container: Container):
     rejected_count = sum(1 for s in screenshots if s.status == "rejected")
     pending_count = sum(1 for s in screenshots if s.status == "pending")
 
-    status_text = "🤖 Автозакрытие" if app.auto_closed else "👤 Ручное завершение"
+    status_text = "Автозакрытие" if app.auto_closed else "Ручное завершение"
 
     report = (
-        f"🔍 Модерация заявки #{str(app.id)[:8]}\n"
-        f"👤 Пользователь: {app.user_id}\n"
-        f"📋 Тип закрытия: {status_text}\n"
-        f"📸 Всего скриншотов: {app.actual_screenshot_count}\n"
-        f"✅ Одобрено: {approved_count}\n"
-        f"❌ Отклонено: {rejected_count}\n"
-        f"⏳ На проверке: {pending_count}\n\n"
+        f"Модерация заявки #{str(app.id)[:8]}\n"
+        f"Пользователь: {app.user_id}\n"
+        f"Тип закрытия: {status_text}\n"
+        f"Всего скриншотов: {app.actual_screenshot_count}\n"
+        f"Одобрено: {approved_count}\n"
+        f"Отклонено: {rejected_count}\n"
+        f"На проверке: {pending_count}\n\n"
         f"Ниже будут отображены скриншоты для проверки. Используйте кнопки под каждым скриншотом."
     )
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Завершить проверку и выдать награду", callback_data=f"finalize_app:{app.id}")],
-        [InlineKeyboardButton(text="🔙 Назад к очереди", callback_data="queue_back")]
+        [InlineKeyboardButton(text="Завершить проверку и выдать награду", callback_data=f"finalize_app:{app.id}")],
+        [InlineKeyboardButton(text="Назад к очереди", callback_data="queue_back")]
     ])
 
     try:
@@ -89,32 +116,23 @@ async def cb_review_app(callback: CallbackQuery, container: Container):
 
     for s in screenshots:
         if s.status == "approved":
-            status_emoji = "✅"
+            status_label = "[одобрено]"
         elif s.status == "rejected":
-            status_emoji = "❌"
+            status_label = "[отклонено]"
         else:
-            status_emoji = "⏳"
+            status_label = "[на проверке]"
 
         screen_kb = InlineKeyboardMarkup(inline_keyboard=[
             [
-                InlineKeyboardButton(text="✅ Одобрить", callback_data=f"approve_scr:{s.id}"),
-                InlineKeyboardButton(text="❌ Отклонить", callback_data=f"reject_scr:{s.id}")
+                InlineKeyboardButton(text="Одобрить", callback_data=f"approve_scr:{s.id}"),
+                InlineKeyboardButton(text="Отклонить", callback_data=f"reject_scr:{s.id}")
             ]
         ])
 
         try:
             await callback.message.answer(
-                f"📸 Скриншот {status_emoji}\nПуть: {s.storage_path}\nСтатус: {s.status}",
+                f"Скриншот {status_label}\nПуть: {s.storage_path}\nСтатус: {s.status}",
                 reply_markup=screen_kb
             )
         except TelegramBadRequest:
             pass
-@router.message(Command("start"))
-async def cmd_start(message: Message):
-    if not is_admin(message.from_user.id):
-        await message.answer("Доступ запрещен.")
-        return
-    await message.answer(
-        "Привет! Я бот для модерации заявок.\n\n"
-        "Используй команду /queue, чтобы посмотреть список заявок на проверку."
-    )

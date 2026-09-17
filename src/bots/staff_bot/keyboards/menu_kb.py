@@ -1,4 +1,4 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
 
 def get_main_menu_kb() -> ReplyKeyboardMarkup:
@@ -14,12 +14,13 @@ def get_main_menu_kb() -> ReplyKeyboardMarkup:
                 KeyboardButton(text="Отчет"),
             ],
             [KeyboardButton(text="Техническая поддержка")],
+            [KeyboardButton(text="Скрыть меню")],
         ],
         resize_keyboard=True,
         is_persistent=True,
     )
 
 
-def remove_menu_kb() -> ReplyKeyboardMarkup:
+def remove_menu_kb() -> ReplyKeyboardRemove:
     """Возвращает клавиатуру для скрытия меню."""
-    return ReplyKeyboardMarkup(remove_keyboard=True)
+    return ReplyKeyboardRemove()
