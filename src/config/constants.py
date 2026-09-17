@@ -1,42 +1,39 @@
-from typing import Final
+# Статусы сессий
+SESSION_STATUS_ACTIVE = "active"
+SESSION_STATUS_COMPLETED = "completed"
+SESSION_STATUS_EXPIRED = "expired"
+SESSION_STATUS_CANCELLED = "cancelled"
 
+# Статусы заявок
+APPLICATION_STATUS_PENDING_REVIEW = "pending_review"
+APPLICATION_STATUS_APPROVED = "approved"
+APPLICATION_STATUS_REJECTED = "rejected"
+APPLICATION_STATUS_REWARDED = "rewarded"
 
-class DatabaseTables:
-    """Названия таблиц в PostgreSQL."""
-    USERS: Final[str] = "users"
-    CAMPAIGNS: Final[str] = "campaigns"
-    APPLICATIONS: Final[str] = "applications"
-    REWARDS: Final[str] = "rewards"
-    SUPPORT_TICKETS: Final[str] = "support_tickets"
-    SUPPORT_MESSAGES: Final[str] = "support_messages"
-    AUDIT_LOG: Final[str] = "audit_log"
-    RATE_LIMITS: Final[str] = "rate_limits"
+# Статусы скриншотов
+SCREENSHOT_STATUS_PENDING = "pending"
+SCREENSHOT_STATUS_APPROVED = "approved"
+SCREENSHOT_STATUS_REJECTED = "rejected"
 
+# Статусы наград
+REWARD_STATUS_PENDING = "pending"
+REWARD_STATUS_ISSUED = "issued"
+REWARD_STATUS_FAILED = "failed"
 
-class RateLimits:
-    """Лимиты запросов для защиты от спама."""
-    APPLICATIONS_PER_DAY_PER_USER: Final[int] = 10
-    MESSAGES_PER_MINUTE_PER_USER: Final[int] = 20
-    SCREENSHOT_UPLOADS_PER_HOUR: Final[int] = 50
+# Лимиты
+MAX_SCREENSHOTS_PER_SESSION = 100
+MAX_APPLICATIONS_PER_DAY = 500
 
+# Антифрод
+MIN_SCREENSHOT_INTERVAL_SECONDS = 600
 
-class Validation:
-    """Параметры валидации скриншотов."""
-    MAX_FILE_SIZE_MB: Final[int] = 10
-    ALLOWED_IMAGE_FORMATS: Final[tuple[str, ...]] = ("jpg", "jpeg", "png", "webp")
-    MIN_IMAGE_DIMENSION: Final[int] = 100
-    MAX_IMAGE_DIMENSION: Final[int] = 4096
+# Таймауты и очистка
+SESSION_TIMEOUT_HOURS = 24
+SCREENSHOT_RETENTION_DAYS = 30
 
+# Кэш
+BALANCE_CACHE_TTL_SECONDS = 30
 
-class SupportChat:
-    """Настройки чата поддержки."""
-    MAX_MESSAGES_PER_TICKET: Final[int] = 100
-    TICKET_AUTO_CLOSE_HOURS: Final[int] = 72
-    MAX_ATTACHMENTS_PER_MESSAGE: Final[int] = 5
-
-
-class Session:
-    """Настройки сессий и кэширования."""
-    USER_SESSION_TTL_SECONDS: Final[int] = 3600
-    STAFF_SESSION_TTL_SECONDS: Final[int] = 7200
-    CAMPAIGN_CACHE_TTL_SECONDS: Final[int] = 300
+# Награда по умолчанию (модератор может изменить при финализации)
+DEFAULT_REWARD_TYPE = "stars"
+DEFAULT_REWARD_AMOUNT_PER_SCREENSHOT = 10

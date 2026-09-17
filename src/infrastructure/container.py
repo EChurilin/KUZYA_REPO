@@ -1,84 +1,76 @@
-from asyncpg.pool import Pool
-from redis.asyncio import Redis
+from dataclasses import dataclass
 
 from src.config.settings import settings
-from src.integrations.database.connection import init_db_pool, close_db_pool
-from src.integrations.cache.redis_client import init_redis, close_redis
+from src.integrations.database.connection import get_pool
+from src.integrations.storage.local_storage import LocalScreenshotStorage
 from src.integrations.rewards.stub_issuer import StubRewardIssuer
 
-from src.repositories.user_repo import UserRepository
-from src.repositories.campaign_repo import CampaignRepository
-from src.repositories.application_repo import ApplicationRepository
-from src.repositories.reward_repo import RewardRepository
-from src.repositories.ticket_repo import TicketRepository
-from src.repositories.audit_repo import AuditRepository
+from src.repositories.game_repo import GameRepositoryImpl
+from src.repositories.instruction_block_repo import InstructionBlockRepositoryImpl
+from src.repositories.session_repo import SessionRepositoryImpl
+from src.repositories.screenshot_repo import ScreenshotRepositoryImpl
+from src.repositories.balance_repo import BalanceRepositoryImpl
+from src.repositories.application_repo import ApplicationRepositoryImpl
+from src.repositories.reward_repo import RewardRepositoryImpl
 
-from src.services.user_service import UserService
+from src.services.game_service import GameService
+from src.services.instruction_service import InstructionService
+from src.services.balance_service import BalanceService
+from src.services.session_service import SessionService
 from src.services.application_service import ApplicationService
 from src.services.review_service import ReviewService
-from src.services.support_service import SupportService
-from src.utils.logger import logger
+from src.services.cleanup_service import CleanupService
 
 
+@dataclass
 class Container:
-    """Контейнер зависимостей (Dependency Injection).
-    Управляет жизненным циклом подключений к БД/Redis и создает экземпляры
-    репозиториев и сервисов, связывая их друг с другом.
     """
+    DI-контейнер. Собирает все репозитории и сервисы.
+    Боты получают отсюда готовые сервисы.
+    """
+    game_service: GameService
+    instruction_service: InstructionService
+    balance_service: BalanceService
+    session_service: SessionService
+    application_service: ApplicationService
+    review_service: ReviewService
+    cleanup_service: CleanupService
 
-    def __init__(self) -> None:
-        self.settings = settings
-        self.db_pool: Pool | None = None
-        self.redis_client: Redis | None = None
 
-        self.user_repo: UserRepository | None = None
-        self.campaign_repo: CampaignRepository | None = None
-        self.app_repo: ApplicationRepository | None = None
-        self.reward_repo: RewardRepository | None = None
-        self.ticket_repo: TicketRepository | None = None
-        self.audit_repo: AuditRepository | None = None
+def build_container() -> Container:
+    """Создаёт и возвращает полностью собранный контейнер."""
+    pool = get_pool()
 
-        self.user_service: UserService | None = None
-        self.app_service: ApplicationService | None = None
-        self.review_service: ReviewService | None = None
-        self.support_service: SupportService | None = None
+    # Репозитории
+    game_repo = GameRepositoryImpl(pool)
+    instruction_repo = InstructionBlockRepositoryImpl(pool)
+    session_repo = SessionRepositoryImpl(pool)
+    screenshot_repo = ScreenshotRepositoryImpl(pool)
+    balance_repo = BalanceRepositoryImpl(pool)
+    app_repo = ApplicationRepositoryImpl(pool)
+    reward_repo = RewardRepositoryImpl(pool)
 
-    async def init(self) -> None:
-        """Инициализирует подключения и создает граф зависимостей."""
-        logger.info("Initializing application container...")
-        self.db_pool = await init_db_pool()
-        self.redis_client = await init_redis()
+    # Инфраструктура
+    storage = LocalScreenshotStorage(settings.storage.base_path)
+    reward_issuer = StubRewardIssuer()
 
-        self.user_repo = UserRepository(self.db_pool)
-        self.campaign_repo = CampaignRepository(self.db_pool)
-        self.app_repo = ApplicationRepository(self.db_pool)
-        self.reward_repo = RewardRepository(self.db_pool)
-        self.ticket_repo = TicketRepository(self.db_pool)
-        self.audit_repo = AuditRepository(self.db_pool)
+    # Сервисы
+    game_service = GameService(game_repo)
+    instruction_service = InstructionService(instruction_repo)
+    balance_service = BalanceService(balance_repo, reward_issuer)
+    session_service = SessionService(session_repo, screenshot_repo, storage)
+    application_service = ApplicationService(app_repo, session_repo, screenshot_repo)
+    review_service = ReviewService(
+        app_repo, screenshot_repo, reward_repo, balance_service, reward_issuer
+    )
+    cleanup_service = CleanupService(session_repo, screenshot_repo, app_repo, storage)
 
-        self.user_service = UserService(self.user_repo)
-        self.app_service = ApplicationService(
-            app_repo=self.app_repo,
-            campaign_repo=self.campaign_repo,
-            audit_repo=self.audit_repo,
-        )
-        self.review_service = ReviewService(
-            app_repo=self.app_repo,
-            campaign_repo=self.campaign_repo,
-            reward_repo=self.reward_repo,
-            audit_repo=self.audit_repo,
-            reward_issuer=StubRewardIssuer(),
-        )
-        self.support_service = SupportService(
-            ticket_repo=self.ticket_repo,
-            audit_repo=self.audit_repo,
-        )
-        logger.info("Application container initialized.")
-
-    async def shutdown(self) -> None:
-        """Безопасно закрывает все внешние подключения."""
-        logger.info("Shutting down application container...")
-        if self.db_pool:
-            await close_db_pool(self.db_pool)
-        if self.redis_client:
-            await close_redis(self.redis_client)
+    return Container(
+        game_service=game_service,
+        instruction_service=instruction_service,
+        balance_service=balance_service,
+        session_service=session_service,
+        application_service=application_service,
+        review_service=review_service,
+        cleanup_service=cleanup_service,
+    )

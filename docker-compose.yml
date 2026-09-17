@@ -1,27 +1,31 @@
-﻿services:
+services:
   postgres:
     image: postgres:16-alpine
     container_name: kizya_bot_postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./migrations/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
+    networks:
+      - kizya_network
 
   redis:
     image: redis:7-alpine
     container_name: kizya_bot_redis
+    restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -29,10 +33,81 @@
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - kizya_network
+
+  client_bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kizya_bot_client
     restart: unless-stopped
+    environment:
+      BOT_TYPE: client
+      CLIENT_BOT_TOKEN: ${CLIENT_BOT_TOKEN}
+      STAFF_BOT_TOKEN: ${STAFF_BOT_TOKEN}
+      ADMIN_IDS: ${ADMIN_IDS}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: ${REDIS_DB:-0}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      STORAGE_PATH: /app/storage/screenshots
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./storage/screenshots:/app/storage/screenshots
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - kizya_network
+
+  staff_bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kizya_bot_staff
+    restart: unless-stopped
+    environment:
+      BOT_TYPE: staff
+      CLIENT_BOT_TOKEN: ${CLIENT_BOT_TOKEN}
+      STAFF_BOT_TOKEN: ${STAFF_BOT_TOKEN}
+      ADMIN_IDS: ${ADMIN_IDS}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: ${REDIS_DB:-0}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      STORAGE_PATH: /app/storage/screenshots
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./storage/screenshots:/app/storage/screenshots
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - kizya_network
 
 volumes:
   postgres_data:
     driver: local
   redis_data:
     driver: local
+
+networks:
+  kizya_network:
+    driver: bridge

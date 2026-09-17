@@ -1,59 +1,26 @@
-from aiogram import Router
-from aiogram.types import Message
+from aiogram import Router, F
+from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.filters import CommandStart, Command
-
 from src.infrastructure.container import Container
-from src.utils.logger import logger
+from aiogram.fsm.context import FSMContext
 
+router = Router()
 
-async def handle_start(message: Message, container: Container) -> None:
-    """Логика обработки команды /start."""
-    user = message.from_user
-    if not user:
-        return
-
-    # Регистрируем или обновляем пользователя в БД
-    await container.user_service.register_or_update(
-        user_id=user.id,
-        username=user.username,
-        first_name=user.first_name or "Unknown",
-        language_code=user.language_code or "en",
+@router.message(CommandStart())
+@router.message(Command("start"))
+async def cmd_start(message: Message, container: Container, state: FSMContext):
+    """Обработчик команды /start"""
+    # Очищаем состояние на случай, если пользователь начал заново
+    await state.clear()
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Прочитать инструкцию", callback_data="instruction_start")]
+    ])
+    
+    welcome_text = (
+        "Привет! Добро пожаловать в Kizya Bot.\n\n"
+        "Здесь ты можешь получать награды за выполнение заданий в играх.\n"
+        "Прежде чем начать, обязательно ознакомься с инструкцией."
     )
-    logger.info(f"User {user.id} triggered /start")
-
-    text = (
-        f"Привет, {user.first_name}! Я бот для участия в рекламных кампаниях.\n\n"
-        "Чтобы получить награду, тебе нужно выполнить простое задание "
-        "и прислать мне скриншот-подтверждение.\n\n"
-        "Используй команду /help, если нужна помощь, или /campaigns, "
-        "чтобы посмотреть список доступных заданий."
-    )
-    await message.answer(text)
-
-
-async def handle_help(message: Message) -> None:
-    """Логика обработки команды /help."""
-    text = (
-        "Как это работает:\n"
-        "1. Выбери активную кампанию через /campaigns.\n"
-        "2. Выполни условие (например, подпишись на канал).\n"
-        "3. Сделай скриншот и отправь его мне в ответ на сообщение кампании.\n"
-        "4. Дождись проверки модератором и получения награды!\n\n"
-        "Если возникли проблемы, напиши в поддержку: /support"
-    )
-    await message.answer(text)
-
-
-def get_start_router(container: Container) -> Router:
-    """Фабрика, создающая роутер с привязанными хендлерами."""
-    router = Router(name="client_start")
-
-    @router.message(CommandStart())
-    async def cmd_start_wrapper(message: Message) -> None:
-        await handle_start(message, container)
-
-    @router.message(Command("help"))
-    async def cmd_help_wrapper(message: Message) -> None:
-        await handle_help(message)
-
-    return router
+    
+    await message.answer(welcome_text, reply_markup=kb)

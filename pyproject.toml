@@ -4,11 +4,12 @@ version = "0.1.0"
 description = "Telegram bot for advertising with manual screenshot validation"
 requires-python = ">=3.12"
 dependencies = [
-    "aiogram>=3.0.0",
+    "aiogram>=3.31.0",
     "asyncpg>=0.29.0",
     "redis>=5.0.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]
