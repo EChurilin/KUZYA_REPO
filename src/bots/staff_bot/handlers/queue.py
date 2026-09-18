@@ -1,5 +1,6 @@
+from pathlib import Path
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, FSInputFile
 from aiogram.filters import Command
 from aiogram.exceptions import TelegramBadRequest
 from src.infrastructure.container import Container
@@ -85,7 +86,7 @@ async def cb_review_app(callback: CallbackQuery, container: Container):
         await callback.message.edit_text("Заявка не найдена.")
         return
 
-    screenshots = await container.screenshot_repo.get_by_application(app_id)
+    screenshots = await container.application_service._screenshot_repo.get_by_application(app_id)
 
     approved_count = sum(1 for s in screenshots if s.status == "approved")
     rejected_count = sum(1 for s in screenshots if s.status == "rejected")
@@ -105,7 +106,7 @@ async def cb_review_app(callback: CallbackQuery, container: Container):
     )
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Завершить проверку и выдать награду", callback_data=f"finalize_app:{app.id}")],
+        [InlineKeyboardButton(text="Завершить проверку и начислить награду", callback_data=f"finalize_app:{app.id}")],
         [InlineKeyboardButton(text="Назад к очереди", callback_data="queue_back")]
     ])
 
@@ -129,10 +130,21 @@ async def cb_review_app(callback: CallbackQuery, container: Container):
             ]
         ])
 
-        try:
-            await callback.message.answer(
-                f"Скриншот {status_label}\nПуть: {s.storage_path}\nСтатус: {s.status}",
-                reply_markup=screen_kb
-            )
-        except TelegramBadRequest:
-            pass
+        photo_path = Path(s.storage_path)
+        if photo_path.exists():
+            try:
+                await callback.message.answer_photo(
+                    FSInputFile(s.storage_path),
+                    caption=f"Скриншот {status_label}",
+                    reply_markup=screen_kb
+                )
+            except TelegramBadRequest:
+                pass
+        else:
+            try:
+                await callback.message.answer(
+                    f"Скриншот {status_label}\nФайл не найден.",
+                    reply_markup=screen_kb
+                )
+            except TelegramBadRequest:
+                pass
