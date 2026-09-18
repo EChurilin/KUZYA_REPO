@@ -5,6 +5,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from src.config.settings import settings
 from src.integrations.database.connection import init_pool, close_pool
 from src.infrastructure.container import build_container
+from src.infrastructure.background_tasks import run_cleanup_loop
 from src.bots.staff_bot.middlewares.container_middleware import ContainerMiddleware
 
 from src.bots.staff_bot.handlers import (
@@ -52,11 +53,20 @@ async def main():
     dp.include_router(balance.router)
     logger.info("Роутеры зарегистрированы")
 
+    # Запуск фоновой задачи очистки
+    cleanup_task = asyncio.create_task(run_cleanup_loop(container, interval_seconds=3600))
+    logger.info("Фоновая задача очистки запущена")
+
     logger.info("Staff_bot запущен и готов к работе")
 
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
+        cleanup_task.cancel()
+        try:
+            await cleanup_task
+        except asyncio.CancelledError:
+            pass
         await close_pool()
         await bot.session.close()
         logger.info("Staff_bot остановлен")
