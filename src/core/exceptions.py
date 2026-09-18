@@ -21,3 +21,21 @@ class ApplicationLimitReachedError(Exception):
 class RewardBalanceInsufficientError(Exception):
     """Недостаточно средств на балансе бота для выдачи награды."""
     pass
+
+# --- Новые исключения v4.0 ---
+
+class InsufficientUserBalanceError(Exception):
+    """Недостаточно звёзд на внутреннем балансе пользователя для получения подарка."""
+    pass
+
+class InsufficientBotBalanceError(Exception):
+    """Недостаточно звёзд на реальном балансе бота для отправки подарка."""
+    pass
+
+class GiftNotFoundError(Exception):
+    """Подарок не найден в списке доступных."""
+    pass
+
+class TopupNotFoundError(Exception):
+    """Запрос на пополнение не найден."""
+    pass

@@ -289,6 +289,10 @@ class TopupRepository(Protocol):
     ) -> None:
         ...
 
+    async def set_invoice_message_id(self, topup_id: uuid.UUID, message_id: int) -> None:
+        """Сохраняет message_id отправленного инвойса."""
+        ...
+
     async def delete_invoice_message_id(self, topup_id: uuid.UUID) -> None:
         """Обнуляет invoice_message_id после удаления сообщения-инвойса."""
         ...

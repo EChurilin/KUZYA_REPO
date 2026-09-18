@@ -76,6 +76,13 @@ class TopupRepositoryImpl(BaseRepository):
                 telegram_payment_charge_id,
             )
 
+    async def set_invoice_message_id(self, topup_id: uuid.UUID, message_id: int) -> None:
+        await self.execute(
+            "UPDATE star_topups SET invoice_message_id = $2 WHERE id = $1",
+            topup_id,
+            message_id,
+        )
+
     async def delete_invoice_message_id(self, topup_id: uuid.UUID) -> None:
         await self.execute(
             "UPDATE star_topups SET invoice_message_id = NULL WHERE id = $1",

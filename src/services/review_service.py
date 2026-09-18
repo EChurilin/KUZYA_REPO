@@ -1,32 +1,32 @@
 import uuid
-from datetime import datetime, timezone
 from typing import Optional
 
-from src.core.entities import Reward, ApplicationScreenshot
+from src.core.exceptions import SessionNotFoundError
 from src.core.interfaces import (
     ApplicationRepository,
     ScreenshotRepository,
-    RewardRepository,
 )
-from src.core.exceptions import RewardBalanceInsufficientError, SessionNotFoundError
-from src.services.balance_service import BalanceService
-from src.integrations.rewards.stub_issuer import StubRewardIssuer
+from src.services.user_balance_service import UserBalanceService
+from src.services.settings_service import SettingsService
+from src.services.notification_service import NotificationService
 
 
 class ReviewService:
+    """Сервис модерации заявок: одобрение/отклонение скриншотов и финализация."""
+
     def __init__(
         self,
         app_repo: ApplicationRepository,
         screenshot_repo: ScreenshotRepository,
-        reward_repo: RewardRepository,
-        balance_service: BalanceService,
-        reward_issuer: StubRewardIssuer,
+        user_balance_service: UserBalanceService,
+        settings_service: SettingsService,
+        notification_service: NotificationService,
     ):
         self._app_repo = app_repo
         self._screenshot_repo = screenshot_repo
-        self._reward_repo = reward_repo
-        self._balance_service = balance_service
-        self._reward_issuer = reward_issuer
+        self._user_balance_service = user_balance_service
+        self._settings_service = settings_service
+        self._notification_service = notification_service
 
     async def approve_screenshot(self, screenshot_id: uuid.UUID, moderator_id: int) -> None:
         """Одобряет конкретный скриншот."""
@@ -40,28 +40,34 @@ class ReviewService:
         self,
         application_id: uuid.UUID,
         moderator_id: int,
-        reward_type: str,
-        reward_amount_per_screenshot: int,
         comment: Optional[str] = None,
-    ) -> Reward:
+    ) -> int:
         """
-        Финализирует заявку: считает одобренные скриншоты, проверяет баланс,
-        создает запись о награде и обновляет статус заявки.
+        Финализирует заявку: считает одобренные скриншоты, начисляет звёзды
+        на внутренний баланс пользователя и отправляет уведомление.
+        Возвращает сумму начисленных звёзд.
+        Идемпотентно: повторная финализация не начисляет повторно.
         """
-        # 1. Получаем заявку и её скриншоты
+        # 1. Получаем заявку
         app = await self._app_repo.get_by_id(application_id)
         if not app:
             raise SessionNotFoundError("Заявка не найдена.")
 
+        # 2. Идемпотентность: если уже вознаграждена, не начисляем повторно
+        if app.status == "rewarded":
+            return 0
+
+        # 3. Считаем одобренные скриншоты
         screenshots = await self._screenshot_repo.get_by_application(application_id)
         approved_count = sum(1 for s in screenshots if s.status == "approved")
 
-        # 2. Обновляем статус заявки и счетчик одобренных
+        # 4. Определяем статус заявки
         if approved_count == 0:
             app_status = "rejected"
         else:
             app_status = "approved"
 
+        # 5. Обновляем статус заявки и счётчик одобренных
         await self._app_repo.update_status(
             application_id=application_id,
             status=app_status,
@@ -70,43 +76,30 @@ class ReviewService:
             approved_count=approved_count,
         )
 
-        # 3. Если есть одобренные скриншоты, выдаем награду
+        # 6. Если есть одобренные скриншоты — начисляем баланс
         if approved_count > 0:
-            total_reward_amount = approved_count * reward_amount_per_screenshot
+            price = await self._settings_service.get_screenshot_price()
+            total_amount = approved_count * price
 
-            # Проверка баланса
-            current_balance = await self._balance_service.get_current_balance(reward_type)
-            if current_balance < total_reward_amount:
-                raise RewardBalanceInsufficientError(
-                    f"Недостаточно средств на балансе. Требуется: {total_reward_amount}, доступно: {current_balance}"
-                )
-
-            # Выдача награды через issuer (заглушка или реальный API)
-            transaction_id = await self._reward_issuer.issue_reward(
-                user_id=app.user_id,
-                reward_type=reward_type,
-                amount=total_reward_amount,
-            )
-
-            # Создаем запись о награде в БД
-            now = datetime.now(timezone.utc)
-            reward = Reward(
-                id=uuid.uuid4(),
+            await self._user_balance_service.credit_from_application(
                 user_id=app.user_id,
                 application_id=application_id,
-                reward_type=reward_type,
-                amount=total_reward_amount,
-                transaction_id=transaction_id,
-                status="issued",
-                issued_at=now,
-                delivered_at=now,
+                approved_count=approved_count,
+                price_per_screenshot=price,
             )
-            await self._reward_repo.create(reward)
 
-            # Помечаем заявку как выданную
             await self._app_repo.mark_rewarded(application_id)
 
-            return reward
+            await self._notification_service.notify_user(
+                user_id=app.user_id,
+                text=f"Ваша заявка одобрена. Начислено звёзд: {total_amount}.",
+            )
 
-        # Если одобренных скриншотов нет, возвращаем None или пустую заглушку
-        return None
+            return total_amount
+
+        # 7. Если одобренных нет — уведомляем об отклонении
+        await self._notification_service.notify_user(
+            user_id=app.user_id,
+            text="Ваша заявка отклонена.",
+        )
+        return 0

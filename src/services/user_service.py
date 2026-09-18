@@ -1,5 +1,5 @@
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from src.core.entities import User
 from src.core.interfaces import UserRepository
 
@@ -23,7 +23,7 @@ class UserService:
         user = await self._user_repo.get_by_id(user_id)
         if user is not None:
             return user
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         new_user = User(
             id=user_id,
             username=username,
@@ -35,3 +35,15 @@ class UserService:
         )
         await self._user_repo.create(new_user)
         return new_user
+
+    async def mark_instruction_passed(self, user_id: int) -> None:
+        """Устанавливает флаг 'инструкция пройдена'."""
+        await self._user_repo.set_instruction_passed(user_id, True)
+
+    async def save_last_instruction_message_id(self, user_id: int, message_id: int) -> None:
+        """Сохраняет message_id последнего блока инструкции."""
+        await self._user_repo.set_last_instruction_message_id(user_id, message_id)
+
+    async def clear_last_instruction_message_id(self, user_id: int) -> None:
+        """Очищает сохранённый message_id последнего блока инструкции."""
+        await self._user_repo.set_last_instruction_message_id(user_id, None)

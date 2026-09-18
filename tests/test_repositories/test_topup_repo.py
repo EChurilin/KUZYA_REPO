@@ -105,6 +105,15 @@ class TestTopupRepository:
         repo.execute.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_set_invoice_message_id(self, repo):
+        repo.execute = AsyncMock()
+        topup_id = uuid.uuid4()
+
+        await repo.set_invoice_message_id(topup_id, 42)
+
+        repo.execute.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_delete_invoice_message_id(self, repo):
         repo.execute = AsyncMock()
         topup_id = uuid.uuid4()
