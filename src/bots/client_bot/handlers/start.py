@@ -1,26 +1,30 @@
-from aiogram import Router, F
-from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.filters import CommandStart, Command
-from src.infrastructure.container import Container
+from aiogram import Router
+from aiogram.types import Message
+from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
+from src.infrastructure.container import Container
+from src.bots.client_bot.keyboards.main_kb import get_main_menu_kb
 
 router = Router()
 
+
 @router.message(CommandStart())
-@router.message(Command("start"))
 async def cmd_start(message: Message, container: Container, state: FSMContext):
-    """Обработчик команды /start"""
-    # Очищаем состояние на случай, если пользователь начал заново
+    """Обработчик команды /start — показывает главное меню."""
     await state.clear()
-    
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Прочитать инструкцию", callback_data="instruction_start")]
-    ])
-    
+
+    # Регистрируем или получаем существующего пользователя
+    await container.user_service.get_or_create_user(
+        user_id=message.from_user.id,
+        username=message.from_user.username,
+        first_name=message.from_user.first_name,
+        language_code=message.from_user.language_code,
+    )
+
     welcome_text = (
         "Привет! Добро пожаловать в Kizya Bot.\n\n"
         "Здесь ты можешь получать награды за выполнение заданий в играх.\n"
-        "Прежде чем начать, обязательно ознакомься с инструкцией."
+        "Используй кнопки меню для навигации."
     )
-    
-    await message.answer(welcome_text, reply_markup=kb)
+
+    await message.answer(welcome_text, reply_markup=get_main_menu_kb())
