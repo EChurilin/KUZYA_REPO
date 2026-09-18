@@ -2,7 +2,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemo
 
 
 def get_main_menu_kb() -> ReplyKeyboardMarkup:
-    """Возвращает reply-клавиатуру главного меню staff_bot."""
+    """Возвращает reply-клавиатуру главного меню staff_bot (9 кнопок)."""
     return ReplyKeyboardMarkup(
         keyboard=[
             [
@@ -12,6 +12,11 @@ def get_main_menu_kb() -> ReplyKeyboardMarkup:
             [
                 KeyboardButton(text="Инструкция"),
                 KeyboardButton(text="Отчет"),
+            ],
+            [KeyboardButton(text="Цена скриншота")],
+            [
+                KeyboardButton(text="Пополнить баланс"),
+                KeyboardButton(text="Баланс звёзд"),
             ],
             [KeyboardButton(text="Техническая поддержка")],
             [KeyboardButton(text="Скрыть меню")],

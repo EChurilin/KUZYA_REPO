@@ -7,7 +7,17 @@ from src.integrations.database.connection import init_pool, close_pool
 from src.infrastructure.container import build_container
 from src.bots.staff_bot.middlewares.container_middleware import ContainerMiddleware
 
-from src.bots.staff_bot.handlers import menu, queue, review, games, instruction, report
+from src.bots.staff_bot.handlers import (
+    menu,
+    queue,
+    review,
+    games,
+    instruction,
+    report,
+    settings as settings_handler,
+    topup,
+    balance,
+)
 
 async def main():
     logging.basicConfig(
@@ -37,6 +47,9 @@ async def main():
     dp.include_router(games.router)
     dp.include_router(instruction.router)
     dp.include_router(report.router)
+    dp.include_router(settings_handler.router)
+    dp.include_router(topup.router)
+    dp.include_router(balance.router)
     logger.info("Роутеры зарегистрированы")
 
     logger.info("Staff_bot запущен и готов к работе")

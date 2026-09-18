@@ -19,3 +19,13 @@ class InstructionManagement(StatesGroup):
     waiting_for_count = State()
     waiting_for_block = State()
     previewing = State()
+
+
+class SettingsManagement(StatesGroup):
+    """Состояния для сценария изменения цены скриншота."""
+    waiting_for_price = State()
+
+
+class TopupManagement(StatesGroup):
+    """Состояния для сценария пополнения баланса бота."""
+    waiting_for_amount = State()
