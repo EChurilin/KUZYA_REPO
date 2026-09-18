@@ -1,5 +1,5 @@
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from src.core.interfaces import ReportRepository
 
 
@@ -30,7 +30,7 @@ class ReportService:
         """Преобразует строковый период в метку времени или None для 'всё время'."""
         if period == "all_time":
             return None
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if period == "today":
             return now.replace(hour=0, minute=0, second=0, microsecond=0)
         if period == "30_days":
