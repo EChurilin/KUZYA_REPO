@@ -14,6 +14,7 @@ from src.bots.client_bot.handlers import (
     game_selection,
     session,
     gift_claim,
+    payments,
     menu,
 )
 
@@ -46,6 +47,7 @@ async def main():
     dp.include_router(game_selection.router)
     dp.include_router(session.router)
     dp.include_router(gift_claim.router)
+    dp.include_router(payments.router)
     dp.include_router(menu.router)
     logger.info("Роутеры зарегистрированы")
 
