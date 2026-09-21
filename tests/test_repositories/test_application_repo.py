@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 import pytest
@@ -47,6 +47,7 @@ def _app_to_dict(a: Application) -> dict:
         "rewarded_at": a.rewarded_at,
         "reviewed_by": a.reviewed_by,
         "auto_closed": a.auto_closed,
+        "summary_message_id": a.summary_message_id,
     }
 
 

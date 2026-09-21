@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 import pytest
@@ -35,6 +35,7 @@ def _screenshot_to_dict(s: ApplicationScreenshot) -> dict:
         "storage_path": s.storage_path,
         "status": s.status,
         "created_at": s.created_at,
+        "staff_message_id": s.staff_message_id,
     }
 
 

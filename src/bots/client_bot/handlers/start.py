@@ -1,4 +1,4 @@
-from aiogram import Router
+﻿from aiogram import Router
 from aiogram.types import Message
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
@@ -22,7 +22,7 @@ async def cmd_start(message: Message, container: Container, state: FSMContext):
     )
 
     welcome_text = (
-        "Привет! Добро пожаловать в Kizya Bot.\n\n"
+        "Привет! Добро пожаловать в Kuzya Bot.\n\n"
         "Здесь ты можешь получать награды за выполнение заданий в играх.\n"
         "Используй кнопки меню для навигации."
     )

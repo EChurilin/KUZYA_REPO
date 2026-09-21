@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 from typing import Optional
 
 from src.core.exceptions import SessionNotFoundError
@@ -35,6 +35,40 @@ class ReviewService:
     async def reject_screenshot(self, screenshot_id: uuid.UUID, moderator_id: int) -> None:
         """Отклоняет конкретный скриншот."""
         await self._screenshot_repo.update_status(screenshot_id, "rejected")
+
+    async def reset_screenshot(self, screenshot_id: uuid.UUID) -> None:
+        """Возвращает скриншот в состояние 'на проверке' (для «Изменить решение»)."""
+        await self._screenshot_repo.update_status(screenshot_id, "pending")
+
+    async def get_screenshots_summary(self, application_id: uuid.UUID) -> dict:
+        """Возвращает сводку по скриншотам заявки.
+
+        Возвращает словарь:
+        - approved: количество одобренных
+        - rejected: количество отклонённых
+        - pending: количество на проверке
+        - total: всего скриншотов
+        - amount_to_credit: сумма к начислению (одобренные × цена)
+        """
+        screenshots = await self._screenshot_repo.get_by_application(application_id)
+        approved = sum(1 for s in screenshots if s.status == "approved")
+        rejected = sum(1 for s in screenshots if s.status == "rejected")
+        pending = sum(1 for s in screenshots if s.status == "pending")
+        total = len(screenshots)
+        price = await self._settings_service.get_screenshot_price()
+        amount_to_credit = approved * price
+        return {
+            "approved": approved,
+            "rejected": rejected,
+            "pending": pending,
+            "total": total,
+            "amount_to_credit": amount_to_credit,
+        }
+
+    async def all_screenshots_reviewed(self, application_id: uuid.UUID) -> bool:
+        """Возвращает True, если все скриншоты заявки оценены (нет 'на проверке')."""
+        summary = await self.get_screenshots_summary(application_id)
+        return summary["pending"] == 0 and summary["total"] > 0
 
     async def finalize_application(
         self,
@@ -100,6 +134,6 @@ class ReviewService:
         # 7. Если одобренных нет — уведомляем об отклонении
         await self._notification_service.notify_user(
             user_id=app.user_id,
-            text="Ваша заявка отклонена.",
+            text="Ваши скриншоты не прошли модерацию.",
         )
         return 0

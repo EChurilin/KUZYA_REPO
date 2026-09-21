@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch, MagicMock
+﻿from unittest.mock import AsyncMock, patch, MagicMock
 import pytest
 
 from src.infrastructure.container import Container, build_container
@@ -16,6 +16,7 @@ from src.services.user_balance_service import UserBalanceService
 from src.services.gift_service import GiftService
 from src.services.topup_service import TopupService
 from src.services.notification_service import NotificationService
+from src.services.media_service import MediaService
 
 
 class TestContainer:
@@ -28,6 +29,7 @@ class TestContainer:
         with patch("src.infrastructure.container.settings") as mock_settings:
             mock_settings.storage.base_path = str(tmp_path / "storage" / "screenshots")
             mock_settings.client_bot.token = "test_token"
+            mock_settings.staff_bot.token = "test_staff_token"
 
             container = build_container()
 
@@ -46,6 +48,7 @@ class TestContainer:
             assert isinstance(container.gift_service, GiftService)
             assert isinstance(container.topup_service, TopupService)
             assert isinstance(container.notification_service, NotificationService)
+            assert isinstance(container.media_service, MediaService)
 
     @patch("src.infrastructure.container.Bot")
     @patch("src.infrastructure.container.get_pool")
@@ -56,6 +59,7 @@ class TestContainer:
         with patch("src.infrastructure.container.settings") as mock_settings:
             mock_settings.storage.base_path = str(tmp_path / "storage" / "screenshots")
             mock_settings.client_bot.token = "test_token"
+            mock_settings.staff_bot.token = "test_staff_token"
 
             c1 = build_container()
             c2 = build_container()

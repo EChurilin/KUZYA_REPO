@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, List
@@ -81,6 +81,8 @@ class Application:
     reviewed_by: Optional[int]
     auto_closed: bool
     screenshots: List["ApplicationScreenshot"] = field(default_factory=list)
+    # [v4.1] message_id итогового сообщения в чате стафф-бота
+    summary_message_id: Optional[int] = None
 
 
 @dataclass
@@ -92,6 +94,8 @@ class ApplicationScreenshot:
     storage_path: str
     status: str
     created_at: datetime
+    # [v4.1] message_id сообщения скриншота в чате стафф-бота
+    staff_message_id: Optional[int] = None
 
 
 @dataclass

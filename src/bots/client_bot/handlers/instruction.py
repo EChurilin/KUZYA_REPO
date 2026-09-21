@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 from aiogram import Router, F, Bot
 from aiogram.types import (
     Message,
@@ -120,7 +120,8 @@ async def cb_instruction_next(
         )
         await state.clear()
 
-        # Заменяем кнопку последнего блока на «Начать играть».
+        # Заменяем кнопку последнего блока на «Начать играть» с callback «play_start»,
+        # чтобы повторные нажатия обрабатывались единым хендлером cb_play_start.
         kb = InlineKeyboardMarkup(
             inline_keyboard=[
                 [InlineKeyboardButton(text="Начать играть", callback_data="play_start")]
@@ -130,6 +131,12 @@ async def cb_instruction_next(
             await callback.message.edit_reply_markup(reply_markup=kb)
         except TelegramBadRequest:
             pass
+
+        # [фикс Пункта 2] Сразу показываем список игр — один шаг вместо двух.
+        # Локальный импорт внутри функции, чтобы избежать циклического импорта
+        # на уровне модуля (game_selection импортирует instruction на уровне модуля).
+        from src.bots.client_bot.handlers.game_selection import _show_game_list
+        await _show_game_list(callback.message, container)
         return
 
     # Загружаем блоки сохранённой версии.
@@ -162,7 +169,9 @@ async def cb_instruction_next(
 
 async def _send_instruction_block(message, block, index: int, total: int) -> Message:
     """Отправляет сообщение с текущим блоком инструкции. Возвращает отправленное сообщение."""
-    btn_text = "Понятно, далее" if index < total - 1 else "Понятно, начать"
+    # [фикс Пункта 2] Кнопка последнего блока — «Начать играть» (одна кнопка,
+    # после нажатия сразу показывается список игр). Для остальных — «Понятно, далее».
+    btn_text = "Понятно, далее" if index < total - 1 else "Начать играть"
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text=btn_text, callback_data=f"instruction_next:{index}")]

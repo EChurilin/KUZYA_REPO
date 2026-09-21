@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+﻿from dataclasses import dataclass
 from aiogram import Bot
 
 from src.config.settings import settings
@@ -6,6 +6,7 @@ from src.integrations.database.connection import get_pool
 from src.integrations.storage.local_storage import LocalScreenshotStorage
 from src.integrations.rewards.gift_issuer import GiftIssuer
 from src.integrations.payments.invoice_sender import InvoiceSender
+from src.integrations.media.media_downloader import MediaDownloader
 
 from src.repositories.game_repo import GameRepositoryImpl
 from src.repositories.instruction_block_repo import InstructionBlockRepositoryImpl
@@ -34,6 +35,7 @@ from src.services.user_balance_service import UserBalanceService
 from src.services.gift_service import GiftService
 from src.services.topup_service import TopupService
 from src.services.notification_service import NotificationService
+from src.services.media_service import MediaService
 
 
 @dataclass
@@ -56,16 +58,15 @@ class Container:
     gift_service: GiftService
     topup_service: TopupService
     notification_service: NotificationService
+    media_service: MediaService
 
 
 def build_container() -> Container:
     """Создаёт и возвращает полностью собранный контейнер."""
     pool = get_pool()
 
-    # Экземпляр Bot с токеном клиентского бота.
-    # Используется для отправки инвойсов, подарков и уведомлений.
-    # Polling этим токеном ведёт только client_bot/main.py.
     client_bot = Bot(token=settings.client_bot.token)
+    staff_bot = Bot(token=settings.staff_bot.token)
 
     # Репозитории
     game_repo = GameRepositoryImpl(pool)
@@ -85,6 +86,7 @@ def build_container() -> Container:
     storage = LocalScreenshotStorage(settings.storage.base_path)
     gift_issuer = GiftIssuer(client_bot)
     invoice_sender = InvoiceSender(client_bot)
+    media_downloader = MediaDownloader(staff_bot)
 
     # Сервисы
     game_service = GameService(game_repo)
@@ -96,6 +98,7 @@ def build_container() -> Container:
     settings_service = SettingsService(settings_repo)
     user_balance_service = UserBalanceService(user_balance_repo)
     notification_service = NotificationService(client_bot)
+    media_service = MediaService(media_downloader, settings.storage.base_path)
 
     review_service = ReviewService(
         app_repo, screenshot_repo, user_balance_service,
@@ -128,4 +131,5 @@ def build_container() -> Container:
         gift_service=gift_service,
         topup_service=topup_service,
         notification_service=notification_service,
+        media_service=media_service,
     )

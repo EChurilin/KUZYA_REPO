@@ -1,4 +1,4 @@
-from typing import Protocol, List, Optional
+﻿from typing import Protocol, List, Optional
 from datetime import datetime
 import uuid
 
@@ -127,6 +127,10 @@ class ScreenshotRepository(Protocol):
     async def delete(self, screenshot_id: uuid.UUID) -> None:
         ...
 
+    async def set_staff_message_id(self, screenshot_id: uuid.UUID, message_id: int) -> None:
+        """Сохраняет message_id сообщения скриншота в чате стафф-бота."""
+        ...
+
 
 class BalanceRepository(Protocol):
     async def save_snapshot(self, snapshot: BalanceSnapshot) -> None:
@@ -163,6 +167,10 @@ class ApplicationRepository(Protocol):
         ...
 
     async def count_today_by_user(self, user_id: int) -> int:
+        ...
+
+    async def set_summary_message_id(self, application_id: uuid.UUID, message_id: int) -> None:
+        """Сохраняет message_id итогового сообщения в чате стафф-бота."""
         ...
 
 
@@ -296,3 +304,5 @@ class TopupRepository(Protocol):
     async def delete_invoice_message_id(self, topup_id: uuid.UUID) -> None:
         """Обнуляет invoice_message_id после удаления сообщения-инвойса."""
         ...
+
+

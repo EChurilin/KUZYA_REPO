@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 from datetime import datetime
 from typing import List, Optional
 import asyncpg
@@ -26,7 +26,7 @@ class ScreenshotRepositoryImpl(BaseRepository):
     async def get_by_session(self, session_id: uuid.UUID) -> List[ApplicationScreenshot]:
         rows = await self.fetch(
             """
-            SELECT id, session_id, application_id, client_file_id, storage_path, status, created_at
+            SELECT id, session_id, application_id, client_file_id, storage_path, status, created_at, staff_message_id
             FROM application_screenshots
             WHERE session_id = $1
             ORDER BY created_at ASC
@@ -38,7 +38,7 @@ class ScreenshotRepositoryImpl(BaseRepository):
     async def get_by_application(self, application_id: uuid.UUID) -> List[ApplicationScreenshot]:
         rows = await self.fetch(
             """
-            SELECT id, session_id, application_id, client_file_id, storage_path, status, created_at
+            SELECT id, session_id, application_id, client_file_id, storage_path, status, created_at, staff_message_id
             FROM application_screenshots
             WHERE application_id = $1
             ORDER BY created_at ASC
@@ -50,7 +50,7 @@ class ScreenshotRepositoryImpl(BaseRepository):
     async def get_by_id(self, screenshot_id: uuid.UUID) -> Optional[ApplicationScreenshot]:
         row = await self.fetchone(
             """
-            SELECT id, session_id, application_id, client_file_id, storage_path, status, created_at
+            SELECT id, session_id, application_id, client_file_id, storage_path, status, created_at, staff_message_id
             FROM application_screenshots
             WHERE id = $1
             """,
@@ -62,6 +62,14 @@ class ScreenshotRepositoryImpl(BaseRepository):
         await self.execute(
             "UPDATE application_screenshots SET status = $1 WHERE id = $2",
             status,
+            screenshot_id,
+        )
+
+    async def set_staff_message_id(self, screenshot_id: uuid.UUID, message_id: int) -> None:
+        """Сохраняет message_id сообщения скриншота в чате стафф-бота."""
+        await self.execute(
+            "UPDATE application_screenshots SET staff_message_id = $1 WHERE id = $2",
+            message_id,
             screenshot_id,
         )
 
@@ -84,7 +92,7 @@ class ScreenshotRepositoryImpl(BaseRepository):
         rows = await self.fetch(
             """
             SELECT s.id, s.session_id, s.application_id, s.client_file_id,
-                   s.storage_path, s.status, s.created_at
+                   s.storage_path, s.status, s.created_at, s.staff_message_id
             FROM application_screenshots s
             JOIN sessions sess ON s.session_id = sess.id
             WHERE sess.status IN ('completed', 'expired', 'cancelled')
@@ -109,4 +117,5 @@ class ScreenshotRepositoryImpl(BaseRepository):
             storage_path=row["storage_path"],
             status=row["status"],
             created_at=row["created_at"],
+            staff_message_id=row["staff_message_id"],
         )

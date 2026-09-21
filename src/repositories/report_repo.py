@@ -1,4 +1,4 @@
-from typing import List, Optional
+﻿from typing import List, Optional
 from datetime import datetime
 import asyncpg
 from src.repositories.base import BaseRepository
@@ -10,7 +10,7 @@ class ReportRepositoryImpl(BaseRepository):
             """
             SELECT COUNT(DISTINCT user_id)
             FROM sessions
-            WHERE ($1::timestamp IS NULL OR started_at >= $1)
+            WHERE ($1::timestamptz IS NULL OR started_at >= $1::timestamptz)
             """,
             since
         )
@@ -24,7 +24,7 @@ class ReportRepositoryImpl(BaseRepository):
                 COUNT(*) FILTER (WHERE aps.status = 'approved' AND a.status = 'rewarded') as approved_count
             FROM application_screenshots aps
             LEFT JOIN applications a ON a.id = aps.application_id
-            WHERE ($1::timestamp IS NULL OR aps.created_at >= $1)
+            WHERE ($1::timestamptz IS NULL OR aps.created_at >= $1::timestamptz)
             """,
             since
         )
@@ -45,7 +45,7 @@ class ReportRepositoryImpl(BaseRepository):
             JOIN application_screenshots aps ON aps.session_id = s.id
             LEFT JOIN applications a ON a.id = aps.application_id
             LEFT JOIN users u ON u.id = s.user_id
-            WHERE ($1::timestamp IS NULL OR aps.created_at >= $1)
+            WHERE ($1::timestamptz IS NULL OR aps.created_at >= $1::timestamptz)
             GROUP BY s.user_id, u.username, u.first_name
             ORDER BY sent_count DESC
             LIMIT $2
@@ -66,7 +66,7 @@ class ReportRepositoryImpl(BaseRepository):
             JOIN games g ON g.id = s.game_id
             JOIN application_screenshots aps ON aps.session_id = s.id
             LEFT JOIN applications a ON a.id = aps.application_id
-            WHERE ($1::timestamp IS NULL OR aps.created_at >= $1)
+            WHERE ($1::timestamptz IS NULL OR aps.created_at >= $1::timestamptz)
             GROUP BY g.name
             ORDER BY sent_count DESC
             """,

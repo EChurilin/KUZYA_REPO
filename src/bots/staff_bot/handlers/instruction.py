@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from aiogram import Router, F
@@ -142,30 +142,6 @@ async def process_stage_count(message: Message, state: FSMContext):
     await state.set_state(InstructionManagement.waiting_for_block)
 
 
-async def _save_media_locally(container: Container, message: Message) -> tuple[str, str]:
-    """Скачивает медиафайл и сохраняет локально. Возвращает (media_type, file_path)."""
-    instruction_dir = Path(settings.storage.base_path) / "instruction"
-    instruction_dir.mkdir(parents=True, exist_ok=True)
-
-    filename = f"{uuid.uuid4()}"
-    
-    if message.photo:
-        photo = message.photo[-1]
-        file = await container.bot.get_file(photo.file_id)
-        file_path = instruction_dir / f"{filename}.jpg"
-        await container.bot.download_file(file.file_path, file_path)
-        return "photo", str(file_path)
-    elif message.video:
-        video = message.video
-        file = await container.bot.get_file(video.file_id)
-        extension = Path(video.file_name).suffix if video.file_name else ".mp4"
-        file_path = instruction_dir / f"{filename}{extension}"
-        await container.bot.download_file(file.file_path, file_path)
-        return "video", str(file_path)
-    
-    return "text", ""
-
-
 @router.message(StateFilter(InstructionManagement.waiting_for_block))
 async def process_block_content(message: Message, state: FSMContext, container: Container):
     if not is_admin(message.from_user.id):
@@ -192,7 +168,7 @@ async def process_block_content(message: Message, state: FSMContext, container: 
     media_path = None
 
     if message.photo or message.video:
-        media_type, media_path = await _save_media_locally(container, message)
+        media_type, media_path = await container.media_service.save_instruction_media(message)
 
     # Создаём блок
     now = datetime.now(timezone.utc)
@@ -252,7 +228,7 @@ async def _show_preview(message: Message, state: FSMContext, container: Containe
                 if block["media_type"] != "text":
                     parts.append(f"  Медиа: {block['media_type']}")
                 chunk_text += "\n".join(parts) + "\n\n"
-            
+
             if i + chunk_size >= len(blocks):
                 # Последний чанк — добавляем клавиатуру
                 await message.answer(
@@ -306,12 +282,12 @@ async def publish_instruction(callback: CallbackQuery, state: FSMContext, contai
             f"Новые пользователи увидят эту версию.\n"
             f"Пользователи, уже проходящие старую инструкцию, продолжат её до конца.\n"
             f"Старая версия будет автоматически удалена через 24 часа.",
-            reply_markup=get_main_menu_kb()
+            reply_markup=get_instruction_back_to_menu_kb()
         )
     except Exception as e:
         await callback.message.edit_text(
             f"Ошибка при публикации: {str(e)}",
-            reply_markup=get_main_menu_kb()
+            reply_markup=get_instruction_back_to_menu_kb()
         )
 
     await state.clear()
@@ -345,7 +321,7 @@ async def cancel_instruction(callback: CallbackQuery, state: FSMContext, contain
     await state.clear()
     await callback.message.edit_text(
         "Редактирование инструкции отменено. Черновик удалён.",
-        reply_markup=get_main_menu_kb()
+        reply_markup=get_instruction_back_to_menu_kb()
     )
 
 
@@ -356,4 +332,6 @@ async def back_to_menu(callback: CallbackQuery, state: FSMContext):
         return
     await callback.answer()
     await state.clear()
-    await callback.message.edit_text("Главное меню:", reply_markup=get_main_menu_kb())
+    await callback.message.edit_text("Главное меню:")
+
+

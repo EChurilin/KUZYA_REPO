@@ -1,4 +1,4 @@
-from typing import List, Optional
+﻿from typing import List, Optional
 import uuid
 from src.core.entities import Game
 from src.core.interfaces import GameRepository
@@ -20,14 +20,19 @@ class GameService:
         """Добавляет одну новую игру к текущему активному списку."""
         await self._game_repo.create(game)
 
+    async def add_games(self, games: List[Game]) -> None:
+        """Добавляет несколько игр к текущему списку БЕЗ деактивации существующих."""
+        for game in games:
+            await self._game_repo.create(game)
+
     async def replace_game_list(self, new_games: List[Game]) -> None:
-        """Полная замена списка игр: деактивирует все текущие активные игры и создаёт новые."""
+        """Полная замена списка: деактивирует все активные игры и создаёт новые."""
         await self._game_repo.deactivate_all()
         for game in new_games:
             await self._game_repo.create(game)
 
     async def get_old_deactivated_games(self, hours: int = 36) -> List[Game]:
-        """Возвращает деактивированные игры старше N часов для последующей очистки."""
+        """Возвращает деактивированные игры старше N часов для очистки."""
         return await self._game_repo.get_old_deactivated_games(hours)
 
     async def delete_game(self, game_id: uuid.UUID) -> None:

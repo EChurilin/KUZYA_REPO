@@ -1,4 +1,4 @@
-from aiogram import Router, F
+﻿from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
@@ -20,7 +20,7 @@ async def cmd_start(message: Message, container: Container, state: FSMContext):
         return
     await state.clear()
     await message.answer(
-        "Привет! Я бот для управления Kizya Bot.\n\n"
+        "Привет! Я бот для управления Kuzya Bot.\n\n"
         "Используй меню ниже для навигации.",
         reply_markup=get_main_menu_kb()
     )

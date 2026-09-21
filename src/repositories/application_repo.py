@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 import asyncpg
@@ -38,7 +38,7 @@ class ApplicationRepositoryImpl(BaseRepository):
             SELECT id, user_id, session_id, campaign_id, status,
                    actual_screenshot_count, approved_screenshot_count,
                    moderator_comment, submitted_at, reviewed_at,
-                   rewarded_at, reviewed_by, auto_closed
+                   rewarded_at, reviewed_by, auto_closed, summary_message_id
             FROM applications
             WHERE id = $1
             """,
@@ -52,7 +52,7 @@ class ApplicationRepositoryImpl(BaseRepository):
             SELECT id, user_id, session_id, campaign_id, status,
                    actual_screenshot_count, approved_screenshot_count,
                    moderator_comment, submitted_at, reviewed_at,
-                   rewarded_at, reviewed_by, auto_closed
+                   rewarded_at, reviewed_by, auto_closed, summary_message_id
             FROM applications
             WHERE status = 'pending_review'
             ORDER BY submitted_at ASC
@@ -97,13 +97,21 @@ class ApplicationRepositoryImpl(BaseRepository):
             application_id,
         )
 
+    async def set_summary_message_id(self, application_id: uuid.UUID, message_id: int) -> None:
+        """Сохраняет message_id итогового сообщения в чате стафф-бота."""
+        await self.execute(
+            "UPDATE applications SET summary_message_id = $1 WHERE id = $2",
+            message_id,
+            application_id,
+        )
+
     async def get_by_user(self, user_id: int, limit: int = 20) -> List[Application]:
         rows = await self.fetch(
             """
             SELECT id, user_id, session_id, campaign_id, status,
                    actual_screenshot_count, approved_screenshot_count,
                    moderator_comment, submitted_at, reviewed_at,
-                   rewarded_at, reviewed_by, auto_closed
+                   rewarded_at, reviewed_by, auto_closed, summary_message_id
             FROM applications
             WHERE user_id = $1
             ORDER BY submitted_at DESC
@@ -143,4 +151,5 @@ class ApplicationRepositoryImpl(BaseRepository):
             rewarded_at=row["rewarded_at"],
             reviewed_by=row["reviewed_by"],
             auto_closed=row["auto_closed"],
+            summary_message_id=row["summary_message_id"],
         )
