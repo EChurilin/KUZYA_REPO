@@ -18,7 +18,7 @@ dist/
 config/local.yaml
 postgres_data/
 redis_data/
-storage/
+/storage/
 telegram-reward-bot/
 *.log
 logs/
@@ -27,3 +27,4 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+*.bak

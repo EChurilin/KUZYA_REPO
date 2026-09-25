@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Копируем файлы зависимостей сначала (для кэширования слоёв Docker)
-COPY pyproject.toml README.md ./
+COPY pyproject.toml ./
 
 # Устанавливаем Python-зависимости
 # Используем --no-cache-dir для уменьшения размера образа
