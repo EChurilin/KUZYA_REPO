@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from aiogram import Router, F
@@ -13,6 +13,7 @@ from src.bots.staff_bot.keyboards.instruction_kb import (
     get_instruction_publish_kb,
     get_instruction_cancel_kb,
     get_instruction_back_to_menu_kb,
+    get_instruction_empty_kb,
 )
 from src.bots.staff_bot.keyboards.menu_kb import get_main_menu_kb
 
@@ -38,7 +39,7 @@ async def show_instruction(message: Message, container: Container, state: FSMCon
         await message.answer(
             "Текущая инструкция пуста.\n\n"
             "Нажмите «Начать редактирование», чтобы создать новую версию.",
-            reply_markup=get_instruction_back_to_menu_kb()
+            reply_markup=get_instruction_empty_kb()
         )
         return
 

@@ -37,3 +37,14 @@ def get_instruction_back_to_menu_kb() -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text="Назад в меню", callback_data="menu_back")]
         ]
     )
+
+    
+
+def get_instruction_empty_kb() -> InlineKeyboardMarkup:
+    """Клавиатура для пустой инструкции: создать новую версию + назад в меню."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Начать редактирование", callback_data="instruction_start")],
+            [InlineKeyboardButton(text="Назад в меню", callback_data="menu_back")]
+        ]
+    )
