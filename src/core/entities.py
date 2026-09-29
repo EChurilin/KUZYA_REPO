@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, List
@@ -54,6 +54,7 @@ class Session:
     last_screenshot_at: Optional[datetime]
     screenshot_count: int
     created_at: datetime
+    closed_at: Optional[datetime] = None
 
 
 @dataclass
@@ -220,3 +221,4 @@ class Gift:
     remaining_count: Optional[int] = None
     personal_total_count: Optional[int] = None
     personal_remaining_count: Optional[int] = None
+

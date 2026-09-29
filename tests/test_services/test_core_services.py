@@ -84,6 +84,7 @@ class TestSessionService:
     async def test_start_session_success(self, session_repo_mock, screenshot_repo_mock, storage_mock):
         session_repo_mock.get_active_by_user.return_value = None
         session_repo_mock.create.return_value = None
+        session_repo_mock.get_last_completed_session.return_value = None
 
         service = SessionService(session_repo_mock, screenshot_repo_mock, storage_mock)
         game_id = uuid.uuid4()

@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
@@ -52,7 +52,8 @@ def sample_expired_session():
 
 class TestCleanupService:
     @pytest.mark.asyncio
-    async def test_process_expired_sessions_success(self, session_repo_mock, screenshot_repo_mock, app_repo_mock, storage_mock, game_repo_mock, instruction_repo_mock, sample_expired_session):
+    async def test_process_expired_sessions_with_screenshots_creates_application(self, session_repo_mock, screenshot_repo_mock, app_repo_mock, storage_mock, game_repo_mock, instruction_repo_mock, sample_expired_session):
+        """Непустая истёкшая сессия: создаётся заявка с auto_closed=True."""
         session_repo_mock.get_expired_active_sessions.return_value = [sample_expired_session]
         session_repo_mock.close_session.return_value = None
 
@@ -78,15 +79,34 @@ class TestCleanupService:
         screenshot_repo_mock.link_to_application.assert_awaited_once_with(sample_expired_session.id, created_app.id)
 
     @pytest.mark.asyncio
-    async def test_process_expired_sessions_empty(self, session_repo_mock, screenshot_repo_mock, app_repo_mock, storage_mock, game_repo_mock, instruction_repo_mock):
-        session_repo_mock.get_expired_active_sessions.return_value = []
+    async def test_process_expired_sessions_empty_no_application(self, session_repo_mock, screenshot_repo_mock, app_repo_mock, storage_mock, game_repo_mock, instruction_repo_mock):
+        """Пустая истёкшая сессия (0 скриншотов): закрывается как cancelled, заявка НЕ создаётся."""
+        now = datetime.now(timezone.utc)
+        empty_session = Session(
+            id=uuid.uuid4(),
+            user_id=12345,
+            game_id=uuid.uuid4(),
+            status="active",
+            started_at=now - timedelta(hours=4),
+            last_screenshot_at=None,
+            screenshot_count=0,
+            created_at=now - timedelta(hours=4),
+            closed_at=None,
+        )
+        session_repo_mock.get_expired_active_sessions.return_value = [empty_session]
+        session_repo_mock.close_session.return_value = None
+        screenshot_repo_mock.get_by_session.return_value = []  # 0 скриншотов
 
         service = CleanupService(session_repo_mock, screenshot_repo_mock, app_repo_mock, storage_mock, game_repo_mock, instruction_repo_mock)
+
         count = await service.process_expired_sessions()
 
-        assert count == 0
+        assert count == 1
+        session_repo_mock.close_session.assert_awaited_once_with(empty_session.id, "cancelled")
         app_repo_mock.create.assert_not_awaited()
+        screenshot_repo_mock.link_to_application.assert_not_awaited()
 
+    @pytest.mark.asyncio
     @pytest.mark.asyncio
     async def test_cleanup_old_screenshots_success(self, session_repo_mock, screenshot_repo_mock, app_repo_mock, storage_mock, game_repo_mock, instruction_repo_mock):
         old_screenshot = ApplicationScreenshot(

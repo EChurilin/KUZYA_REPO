@@ -1,4 +1,4 @@
-﻿from typing import Protocol, List, Optional
+from typing import Protocol, List, Optional
 from datetime import datetime
 import uuid
 
@@ -101,6 +101,9 @@ class SessionRepository(Protocol):
     async def get_expired_active_sessions(self, timeout_hours: int) -> List[Session]:
         ...
 
+    async def get_last_completed_session(self, user_id: int) -> Optional[Session]:
+        """Возвращает последнюю завершённую (completed) сессию пользователя для проверки кулдауна."""
+        ...
 
 class ScreenshotRepository(Protocol):
     async def create(self, screenshot: ApplicationScreenshot) -> None:

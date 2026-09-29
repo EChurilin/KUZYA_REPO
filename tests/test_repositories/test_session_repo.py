@@ -24,6 +24,7 @@ def sample_session():
         last_screenshot_at=None,
         screenshot_count=0,
         created_at=now,
+        closed_at=None,
     )
 
 
@@ -37,6 +38,7 @@ def _session_to_dict(session: Session) -> dict:
         "last_screenshot_at": session.last_screenshot_at,
         "screenshot_count": session.screenshot_count,
         "created_at": session.created_at,
+        "closed_at": session.closed_at,
     }
 
 
@@ -124,6 +126,7 @@ class TestSessionRepository:
             last_screenshot_at=now - timedelta(hours=25),
             screenshot_count=3,
             created_at=now - timedelta(hours=25),
+            closed_at=None,
         )
         repo.fetch = AsyncMock(return_value=[_session_to_dict(old_session)])
 
@@ -140,3 +143,33 @@ class TestSessionRepository:
         sessions = await repo.get_expired_active_sessions(24)
 
         assert len(sessions) == 0
+    @pytest.mark.asyncio
+    async def test_get_last_completed_session_found(self, repo):
+        now = datetime.now(timezone.utc)
+        completed_session = Session(
+            id=uuid.uuid4(),
+            user_id=12345,
+            game_id=uuid.uuid4(),
+            status="completed",
+            started_at=now - timedelta(hours=1),
+            last_screenshot_at=now - timedelta(minutes=30),
+            screenshot_count=5,
+            created_at=now - timedelta(hours=1),
+            closed_at=now - timedelta(minutes=15),
+        )
+        repo.fetchone = AsyncMock(return_value=_session_to_dict(completed_session))
+
+        session = await repo.get_last_completed_session(12345)
+
+        assert session is not None
+        assert session.user_id == 12345
+        assert session.status == "completed"
+        assert session.closed_at is not None
+
+    @pytest.mark.asyncio
+    async def test_get_last_completed_session_not_found(self, repo):
+        repo.fetchone = AsyncMock(return_value=None)
+
+        session = await repo.get_last_completed_session(99999)
+
+        assert session is None

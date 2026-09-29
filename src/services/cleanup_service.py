@@ -4,9 +4,11 @@ from pathlib import Path
 from typing import Tuple
 
 from src.config.constants import (
-    SESSION_TIMEOUT_HOURS,
+    SESSION_INACTIVITY_TIMEOUT_HOURS,
     SCREENSHOT_RETENTION_DAYS,
     APPLICATION_STATUS_PENDING_REVIEW,
+    SESSION_STATUS_CANCELLED,
+    SESSION_STATUS_EXPIRED,
 )
 from src.core.entities import Application
 from src.core.interfaces import (
@@ -38,39 +40,52 @@ class CleanupService:
 
     async def process_expired_sessions(self) -> int:
         """
-        Находит сессии, неактивные более SESSION_TIMEOUT_HOURS,
-        закрывает их и автоматически создаёт заявку с пометкой auto_closed.
+        Находит сессии, неактивные более SESSION_INACTIVITY_TIMEOUT_HOURS часов.
+
+        - Пустые сессии (0 скриншотов) закрываются со статусом 'cancelled'
+          БЕЗ создания заявки — валидировать нечего.
+        - Сессии со скриншотами закрываются со статусом 'expired':
+          создаётся заявка с пометкой auto_closed, скриншоты отправляются
+          на валидацию.
+
         Возвращает количество обработанных сессий.
         """
-        sessions = await self._session_repo.get_expired_active_sessions(SESSION_TIMEOUT_HOURS)
+        sessions = await self._session_repo.get_expired_active_sessions(
+            SESSION_INACTIVITY_TIMEOUT_HOURS
+        )
         processed_count = 0
 
         for session in sessions:
             try:
-                await self._session_repo.close_session(session.id, "expired")
-
                 screenshots = await self._screenshot_repo.get_by_session(session.id)
                 actual_count = len(screenshots)
 
-                now = datetime.now(timezone.utc)
-                application = Application(
-                    id=uuid.uuid4(),
-                    user_id=session.user_id,
-                    session_id=session.id,
-                    campaign_id=None,
-                    status=APPLICATION_STATUS_PENDING_REVIEW,
-                    actual_screenshot_count=actual_count,
-                    approved_screenshot_count=0,
-                    moderator_comment="Сессия закрыта автоматически из-за неактивности (24ч).",
-                    submitted_at=now,
-                    reviewed_at=None,
-                    rewarded_at=None,
-                    reviewed_by=None,
-                    auto_closed=True,
-                )
-                await self._app_repo.create(application)
+                if actual_count == 0:
+                    # Пустая сессия: закрываем без создания заявки
+                    await self._session_repo.close_session(session.id, SESSION_STATUS_CANCELLED)
+                else:
+                    await self._session_repo.close_session(session.id, SESSION_STATUS_EXPIRED)
 
-                if actual_count > 0:
+                    now = datetime.now(timezone.utc)
+                    application = Application(
+                        id=uuid.uuid4(),
+                        user_id=session.user_id,
+                        session_id=session.id,
+                        campaign_id=None,
+                        status=APPLICATION_STATUS_PENDING_REVIEW,
+                        actual_screenshot_count=actual_count,
+                        approved_screenshot_count=0,
+                        moderator_comment=(
+                            f"Сессия закрыта автоматически из-за неактивности "
+                            f"({SESSION_INACTIVITY_TIMEOUT_HOURS}ч)."
+                        ),
+                        submitted_at=now,
+                        reviewed_at=None,
+                        rewarded_at=None,
+                        reviewed_by=None,
+                        auto_closed=True,
+                    )
+                    await self._app_repo.create(application)
                     await self._screenshot_repo.link_to_application(session.id, application.id)
 
                 processed_count += 1

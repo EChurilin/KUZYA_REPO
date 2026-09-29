@@ -44,11 +44,15 @@ CREATE TABLE sessions (
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_screenshot_at TIMESTAMPTZ,
     screenshot_count INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    closed_at TIMESTAMPTZ
 );
 
 -- Индекс для быстрого поиска активной сессии пользователя
 CREATE INDEX idx_sessions_user_active ON sessions(user_id, status) WHERE status = 'active';
+
+-- Индекс для проверки кулдауна при старте новой сессии
+CREATE INDEX idx_sessions_user_completed ON sessions(user_id, closed_at DESC) WHERE status = 'completed';
 
 -- Кампании (ЗАГЛУШКА для будущей аналитики)
 CREATE TABLE campaigns (
@@ -197,3 +201,5 @@ CREATE TRIGGER update_instruction_blocks_updated_at BEFORE UPDATE ON instruction
 
 CREATE TRIGGER update_campaigns_updated_at BEFORE UPDATE ON campaigns
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+

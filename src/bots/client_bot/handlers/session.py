@@ -1,12 +1,14 @@
-﻿from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, FSInputFile
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.fsm.context import FSMContext
 from src.infrastructure.container import Container
 from src.core.exceptions import (
     SessionAlreadyActiveError,
     ScreenshotIntervalTooShortError,
     ScreenshotLimitReachedError,
+    SessionCooldownError,
 )
+from src.bots.client_bot.keyboards.main_kb import remove_menu_kb, get_main_menu_kb
 import uuid
 
 
@@ -49,16 +51,21 @@ async def cb_session_start(callback: CallbackQuery, container: Container, state:
         # Сохраняем session_id в состоянии FSM
         await state.update_data(session_id=str(session.id))
 
+        # Скрываем Reply-клавиатуру главного меню на время сессии
         await callback.message.answer(
             "Сессия открыта! Теперь вы можете отправлять скриншоты.\n\n"
             "Важно: между скриншотами должно проходить не менее 10 минут.\n"
-            "После каждого скриншота вам будет предложено продолжить или забрать награду."
+            "После каждого скриншота вам будет предложено продолжить или забрать награду.",
+            reply_markup=remove_menu_kb(),
         )
 
     except SessionAlreadyActiveError:
         await callback.message.answer(
             "У вас уже есть активная сессия. Завершите её или дождитесь истечения."
         )
+
+    except SessionCooldownError as e:
+        await callback.message.answer(str(e))
 
 
 @router.message(F.photo)
@@ -134,39 +141,56 @@ async def cb_session_continue(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "session_finish")
 async def cb_session_finish(callback: CallbackQuery, container: Container, state: FSMContext):
-    """Завершает сессию и создаёт заявку"""
+    """Завершает сессию: создаёт заявку (если есть скриншоты) или закрывает без заявки."""
     await callback.answer()
 
     data = await state.get_data()
     session_id_str = data.get("session_id")
 
     if not session_id_str:
-        await callback.message.answer("У вас нет активной сессии.")
+        await callback.message.answer(
+            "У вас нет активной сессии.",
+            reply_markup=get_main_menu_kb(),
+        )
         return
 
     try:
         session_id = uuid.UUID(session_id_str)
     except ValueError:
-        await callback.message.answer("Ошибка: некорректный идентификатор сессии.")
+        await callback.message.answer(
+            "Ошибка: некорректный идентификатор сессии.",
+            reply_markup=get_main_menu_kb(),
+        )
         return
 
     user_id = callback.from_user.id
 
     try:
-        # Создаём заявку из сессии
-        application = await container.application_service.create_from_session(
+        application = await container.application_service.finish_session(
             session_id=session_id,
             user_id=user_id,
-            campaign_id=None  # Кампании пока не используются
+            campaign_id=None,
         )
 
         # Очищаем состояние FSM
         await state.clear()
 
-        await callback.message.answer(
-            "Сессия завершена! Ваша заявка отправлена на проверку администратору.\n\n"
-            "Вы получите уведомление о результате проверки."
-        )
+        if application is None:
+            # Пустая сессия: скриншотов не было → cancelled, без заявки
+            await callback.message.answer(
+                "Скриншоты не были отправлены, сессия закрыта без начисления.",
+                reply_markup=get_main_menu_kb(),
+            )
+        else:
+            # Непустая сессия: заявка создана и ушла на модерацию
+            await callback.message.answer(
+                "Сессия завершена! Ваша заявка отправлена на проверку администратору.\n\n"
+                "Вы получите уведомление о результате проверки.",
+                reply_markup=get_main_menu_kb(),
+            )
 
     except Exception as e:
-        await callback.message.answer(f"Ошибка при создании заявки: {str(e)}")
+        await callback.message.answer(
+            f"Ошибка при завершении сессии: {str(e)}",
+            reply_markup=get_main_menu_kb(),
+        )

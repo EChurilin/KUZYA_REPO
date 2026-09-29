@@ -5,6 +5,7 @@ from typing import List, Optional
 from src.config.constants import (
     MAX_APPLICATIONS_PER_DAY,
     APPLICATION_STATUS_PENDING_REVIEW,
+    SESSION_STATUS_CANCELLED,
 )
 from src.core.entities import Application
 from src.core.interfaces import ApplicationRepository, SessionRepository, ScreenshotRepository
@@ -25,6 +26,30 @@ class ApplicationService:
     async def get_user_applications(self, user_id: int, limit: int = 5) -> List[Application]:
         """Возвращает последние заявки пользователя."""
         return await self._app_repo.get_by_user(user_id, limit)
+
+    async def finish_session(
+        self,
+        session_id: uuid.UUID,
+        user_id: int,
+        campaign_id: Optional[uuid.UUID] = None,
+    ) -> Optional[Application]:
+        """
+        Завершает сессию по инициативе пользователя («Забрать награду»).
+
+        Если в сессии 0 скриншотов — сессия закрывается со статусом 'cancelled',
+        заявка НЕ создаётся (возвращается None).
+        Если скриншоты есть — создаётся заявка на модерацию.
+        """
+        session = await self._session_repo.get_by_id(session_id)
+        if not session or session.user_id != user_id:
+            raise SessionNotFoundError("Сессия не найдена или не принадлежит пользователю!")
+
+        screenshots = await self._screenshot_repo.get_by_session(session_id)
+        if not screenshots:
+            await self._session_repo.close_session(session_id, SESSION_STATUS_CANCELLED)
+            return None
+
+        return await self.create_from_session(session_id, user_id, campaign_id)
 
     async def create_from_session(
         self, session_id: uuid.UUID, user_id: int, campaign_id: Optional[uuid.UUID] = None

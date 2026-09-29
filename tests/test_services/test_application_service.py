@@ -33,6 +33,7 @@ def sample_session():
         last_screenshot_at=None,
         screenshot_count=3,
         created_at=datetime.now(timezone.utc),
+        closed_at=None,
     )
 
 
@@ -95,3 +96,63 @@ class TestApplicationService:
         
         with pytest.raises(SessionNotFoundError):
             await service.create_from_session(session_id=sample_session.id, user_id=12345)
+    @pytest.mark.asyncio
+    async def test_finish_session_empty_no_application_created(self, app_repo_mock, session_repo_mock, screenshot_repo_mock, sample_session):
+        """Пустая сессия (0 скриншотов) закрывается как cancelled, заявка НЕ создаётся."""
+        session_repo_mock.get_by_id.return_value = sample_session
+        screenshot_repo_mock.get_by_session.return_value = []  # 0 скриншотов
+        session_repo_mock.close_session.return_value = None
+
+        service = ApplicationService(app_repo_mock, session_repo_mock, screenshot_repo_mock)
+
+        result = await service.finish_session(session_id=sample_session.id, user_id=12345)
+
+        assert result is None
+        session_repo_mock.close_session.assert_awaited_once_with(sample_session.id, "cancelled")
+        app_repo_mock.create.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_finish_session_with_screenshots_creates_application(self, app_repo_mock, session_repo_mock, screenshot_repo_mock, sample_session):
+        """Непустая сессия: создаётся заявка на модерацию."""
+        app_repo_mock.count_today_by_user.return_value = 5  # Лимит не превышен
+        session_repo_mock.get_by_id.return_value = sample_session
+        session_repo_mock.close_session.return_value = None
+
+        screenshot = ApplicationScreenshot(
+            id=uuid.uuid4(), session_id=sample_session.id, application_id=None,
+            client_file_id="file1", storage_path="path1", status="pending", created_at=datetime.now(timezone.utc)
+        )
+        screenshot_repo_mock.get_by_session.return_value = [screenshot]
+        screenshot_repo_mock.link_to_application.return_value = None
+        app_repo_mock.create.return_value = None
+
+        service = ApplicationService(app_repo_mock, session_repo_mock, screenshot_repo_mock)
+
+        app = await service.finish_session(session_id=sample_session.id, user_id=12345)
+
+        assert app is not None
+        assert app.user_id == 12345
+        assert app.status == "pending_review"
+        assert app.actual_screenshot_count == 1
+        session_repo_mock.close_session.assert_awaited_once_with(sample_session.id, "completed")
+        app_repo_mock.create.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_finish_session_not_found(self, app_repo_mock, session_repo_mock, screenshot_repo_mock):
+        """Сессия не найдена."""
+        session_repo_mock.get_by_id.return_value = None
+
+        service = ApplicationService(app_repo_mock, session_repo_mock, screenshot_repo_mock)
+
+        with pytest.raises(SessionNotFoundError):
+            await service.finish_session(session_id=uuid.uuid4(), user_id=12345)
+
+    @pytest.mark.asyncio
+    async def test_finish_session_wrong_user(self, app_repo_mock, session_repo_mock, screenshot_repo_mock, sample_session):
+        """Сессия принадлежит другому пользователю."""
+        session_repo_mock.get_by_id.return_value = Session(**{**vars(sample_session), "user_id": 99999})
+
+        service = ApplicationService(app_repo_mock, session_repo_mock, screenshot_repo_mock)
+
+        with pytest.raises(SessionNotFoundError):
+            await service.finish_session(session_id=sample_session.id, user_id=12345)

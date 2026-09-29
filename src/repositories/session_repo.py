@@ -28,7 +28,7 @@ class SessionRepositoryImpl(BaseRepository):
         row = await self.fetchone(
             """
             SELECT id, user_id, game_id, status, started_at,
-                   last_screenshot_at, screenshot_count, created_at
+                   last_screenshot_at, screenshot_count, created_at, closed_at
             FROM sessions
             WHERE id = $1
             """,
@@ -40,10 +40,25 @@ class SessionRepositoryImpl(BaseRepository):
         row = await self.fetchone(
             """
             SELECT id, user_id, game_id, status, started_at,
-                   last_screenshot_at, screenshot_count, created_at
+                   last_screenshot_at, screenshot_count, created_at, closed_at
             FROM sessions
             WHERE user_id = $1 AND status = 'active'
             ORDER BY started_at DESC
+            LIMIT 1
+            """,
+            user_id,
+        )
+        return self._row_to_session(row) if row else None
+
+    async def get_last_completed_session(self, user_id: int) -> Optional[Session]:
+        """Последняя завершённая (completed) сессия пользователя — для проверки кулдауна."""
+        row = await self.fetchone(
+            """
+            SELECT id, user_id, game_id, status, started_at,
+                   last_screenshot_at, screenshot_count, created_at, closed_at
+            FROM sessions
+            WHERE user_id = $1 AND status = 'completed' AND closed_at IS NOT NULL
+            ORDER BY closed_at DESC
             LIMIT 1
             """,
             user_id,
@@ -66,7 +81,7 @@ class SessionRepositoryImpl(BaseRepository):
 
     async def close_session(self, session_id: uuid.UUID, status: str) -> None:
         await self.execute(
-            "UPDATE sessions SET status = $1 WHERE id = $2",
+            "UPDATE sessions SET status = $1, closed_at = NOW() WHERE id = $2",
             status,
             session_id,
         )
@@ -78,7 +93,7 @@ class SessionRepositoryImpl(BaseRepository):
         rows = await self.fetch(
             """
             SELECT id, user_id, game_id, status, started_at,
-                   last_screenshot_at, screenshot_count, created_at
+                   last_screenshot_at, screenshot_count, created_at, closed_at
             FROM sessions
             WHERE status = 'active'
               AND (
@@ -101,4 +116,5 @@ class SessionRepositoryImpl(BaseRepository):
             last_screenshot_at=row["last_screenshot_at"],
             screenshot_count=row["screenshot_count"],
             created_at=row["created_at"],
+            closed_at=row["closed_at"],
         )

@@ -1,3 +1,4 @@
+import math
 import uuid
 from datetime import datetime, timezone
 from typing import Tuple
@@ -8,6 +9,7 @@ from src.config.constants import (
     SESSION_STATUS_ACTIVE,
     SESSION_STATUS_COMPLETED,
     SCREENSHOT_STATUS_PENDING,
+    SESSION_RESTART_COOLDOWN_SECONDS,
 )
 from src.core.entities import Session, ApplicationScreenshot
 from src.core.interfaces import SessionRepository, ScreenshotRepository
@@ -16,6 +18,7 @@ from src.core.exceptions import (
     SessionNotFoundError,
     ScreenshotIntervalTooShortError,
     ScreenshotLimitReachedError,
+    SessionCooldownError,
 )
 from src.integrations.storage.local_storage import LocalScreenshotStorage
 
@@ -34,9 +37,26 @@ class SessionService:
     async def start_session(self, user_id: int, game_id: uuid.UUID) -> Session:
         active_session = await self._session_repo.get_active_by_user(user_id)
         if active_session:
-            raise SessionAlreadyActiveError("У вас уже есть активная сессия. Завершите её или дождитесь истечения.")
+            raise SessionAlreadyActiveError(
+                "У вас уже есть активная сессия. Завершите её или дождитесь истечения."
+            )
 
         now = datetime.now(timezone.utc)
+
+        # Кулдаун: новую сессию можно начать не раньше, чем через 10 минут
+        # после завершения предыдущей (только для completed — закрытых со
+        # скриншотами и отправленных на валидацию).
+        last_completed = await self._session_repo.get_last_completed_session(user_id)
+        if last_completed and last_completed.closed_at:
+            elapsed_seconds = (now - last_completed.closed_at).total_seconds()
+            if elapsed_seconds < SESSION_RESTART_COOLDOWN_SECONDS:
+                remaining_minutes = math.ceil(
+                    (SESSION_RESTART_COOLDOWN_SECONDS - elapsed_seconds) / 60
+                )
+                raise SessionCooldownError(
+                    f"Новую сессию можно начать через {remaining_minutes} мин."
+                )
+
         session = Session(
             id=uuid.uuid4(),
             user_id=user_id,
@@ -62,7 +82,7 @@ class SessionService:
             raise SessionNotFoundError("Сессия не найдена или уже завершена.")
 
         now = datetime.now(timezone.utc)
-        
+
         if session.last_screenshot_at:
             diff_seconds = (now - session.last_screenshot_at).total_seconds()
             if diff_seconds < MIN_SCREENSHOT_INTERVAL_SECONDS:
@@ -88,12 +108,14 @@ class SessionService:
         )
         await self._screenshot_repo.create(screenshot)
         await self._session_repo.update_last_screenshot(session_id, now)
-        
+
         return screenshot, session.screenshot_count + 1
 
-    async def close_session(self, session_id: uuid.UUID, status: str = SESSION_STATUS_COMPLETED) -> None:
+    async def close_session(
+        self, session_id: uuid.UUID, status: str = SESSION_STATUS_COMPLETED
+    ) -> None:
         session = await self._session_repo.get_by_id(session_id)
         if not session or session.status != SESSION_STATUS_ACTIVE:
             raise SessionNotFoundError("Сессия не найдена или уже завершена.")
-            
+
         await self._session_repo.close_session(session_id, status)

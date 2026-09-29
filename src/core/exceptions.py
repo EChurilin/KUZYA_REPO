@@ -39,3 +39,6 @@ class GiftNotFoundError(Exception):
 class TopupNotFoundError(Exception):
     """Запрос на пополнение не найден."""
     pass
+class SessionCooldownError(Exception):
+    """Попытка начать новую сессию раньше, чем через 10 минут после завершения предыдущей."""
+    pass

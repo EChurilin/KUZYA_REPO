@@ -26,9 +26,15 @@ MAX_APPLICATIONS_PER_DAY = 500
 
 # Антифрод
 MIN_SCREENSHOT_INTERVAL_SECONDS = 600
+# Кулдаун на старт новой сессии: не раньше, чем через 10 минут после завершения
+# предыдущей (то же значение, что интервал между скриншотами)
+SESSION_RESTART_COOLDOWN_SECONDS = MIN_SCREENSHOT_INTERVAL_SECONDS
 
 # Таймауты и очистка
-SESSION_TIMEOUT_HOURS = 24
+# Автозакрытие сессии при неактивности (в часах):
+# пустые сессии (0 скриншотов) закрываются как 'cancelled' БЕЗ создания заявки;
+# непустые — как 'expired', скриншоты отправляются на валидацию (заявка с auto_closed)
+SESSION_INACTIVITY_TIMEOUT_HOURS = 3
 SCREENSHOT_RETENTION_DAYS = 30
 
 # Кэш
