@@ -7,11 +7,14 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-    ports:
-      - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./migrations/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./migrations/init.sql:/docker-entrypoint-initdb.d/00_init.sql:ro
+      - ./migrations/002_staff_features.sql:/docker-entrypoint-initdb.d/01_002_staff_features.sql:ro
+      - ./migrations/003_balance_and_gifts.sql:/docker-entrypoint-initdb.d/02_003_balance_and_gifts.sql:ro
+      - ./migrations/004_fix_deactivated_at_tz.sql:/docker-entrypoint-initdb.d/03_004_fix_deactivated_at_tz.sql:ro
+      - ./migrations/005_moderation_message_ids.sql:/docker-entrypoint-initdb.d/04_005_moderation_message_ids.sql:ro
+      - ./migrations/006_session_cooldown.sql:/docker-entrypoint-initdb.d/05_006_session_cooldown.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
@@ -24,8 +27,6 @@ services:
     image: redis:7-alpine
     container_name: kizya_bot_redis
     restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -57,10 +58,11 @@ services:
       REDIS_DB: ${REDIS_DB:-0}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       STORAGE_PATH: /app/storage/screenshots
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-10}
       DEBUG: ${DEBUG:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
-      - ./storage/screenshots:/app/storage/screenshots
+      - ./storage:/app/storage
     depends_on:
       postgres:
         condition: service_healthy
@@ -90,10 +92,11 @@ services:
       REDIS_DB: ${REDIS_DB:-0}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       STORAGE_PATH: /app/storage/screenshots
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-10}
       DEBUG: ${DEBUG:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
-      - ./storage/screenshots:/app/storage/screenshots
+      - ./storage:/app/storage
     depends_on:
       postgres:
         condition: service_healthy
